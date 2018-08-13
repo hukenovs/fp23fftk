@@ -101,7 +101,7 @@ library work;
 use work.fp_m1_pkg.int16_complex;
 use work.fp_m1_pkg.fp23_complex;
 use work.fp_m1_pkg.find_fp;
-use work.fp_m1_pkg.fp23_fix2float_m1;
+
 
 entity rom_twiddle_m4 is
 	generic(
@@ -144,24 +144,6 @@ attribute rom_style of dpo : signal is ramb_str;
 signal div 			: std_logic;
 signal rstp			: std_logic;
 
-component fp23_cnt2flt_m1 is
-	generic(
-		XSERIES		: string:="7SERIES"; 
-		td			: time:=1ns; 	
-		ii			: integer:=0 
-	);
-	port (
-		rom_ww		: in  fp23_complex;
-	   	rom_en		: in  std_logic;
-		   
-		dsp_ww		: out fp23_complex;
-		int_cnt		: in  std_logic_vector(ii downto 0);		
-		
-		clk 		: in  std_logic;
-		rstn  		: in  std_logic
-	);
-end component;
-
 signal ww_i	   		: fp23_complex;
 signal ww_o	   		: fp23_complex;		
 
@@ -170,8 +152,7 @@ begin
 rstp <= not reset when rising_edge(clk); 
 
 -- Output data in (INT to FP) format --
-xFP_RE: fp23_fix2float_m1
-	generic map ( td => td)
+xFP_RE: entity work.fp23_fix2float_m1
 	port map (
 		din		=> ww_node(15 downto 00), 				
 		ena		=> '1',	
@@ -181,8 +162,7 @@ xFP_RE: fp23_fix2float_m1
 		reset	=> reset           
 	);
 	
-xFP_IM: fp23_fix2float_m1
-	generic map ( td => td)
+xFP_IM: entity work.fp23_fix2float_m1
 	port map (
 		din		=> ww_node(31 downto 16), 				
 		ena		=> '1',	
@@ -197,10 +177,10 @@ pr_ww: process(clk) is
 begin
 	if rising_edge(clk) then
 		if (div = '0') then
-			ww_node <= dpo after td;
+			ww_node <= dpo;
 		else      
-			ww_node(15 downto 00) <= dpo(31 downto 16) after td;
-			ww_node(31 downto 16) <= not dpo(15 downto 00) after td; -- NEGATIVE!!
+			ww_node(15 downto 00) <= dpo(31 downto 16);
+			ww_node(31 downto 16) <= not dpo(15 downto 00); -- NEGATIVE!!
 		end if;
 	end if;
 end process; 
@@ -232,7 +212,7 @@ begin
 				if (rstp = '1') then
 					cnt	<= '0';
 				elsif (ww_ena = '1') then
-					cnt <= not cnt after td;
+					cnt <= not cnt;
 				end if;
 			end if;
 		end process;	
@@ -306,48 +286,47 @@ begin
 			if (rstp = '1') then
 				cnt	<=	(others	=>	'0');			
 			elsif (ww_ena = '1') then
-				cnt <= cnt + '1' after td;
+				cnt <= cnt + '1';
 			end if;
 		end if;
 	end process;	
 
-	addr <= cnt(N_INV-2 downto 0) after td when rising_edge(clk);
-	half <= cnt(N_INV-1) after td when rising_edge(clk);		
-	div  <= half after td when rising_edge(clk);	
+	addr <= cnt(N_INV-2 downto 0) when rising_edge(clk);
+	half <= cnt(N_INV-1) when rising_edge(clk);		
+	div  <= half when rising_edge(clk);	
 	
 	X_GEN_M1: if ((N_INV < 12) or (USE_SCALE = TRUE)) generate		
 	begin
-		dpo <= ww32x1K(conv_integer(unsigned(addr))) after td when rising_edge(clk);
+		dpo <= ww32x1K(conv_integer(unsigned(addr))) when rising_edge(clk);
 		ww <= ww_i;
 	end generate;		
 		
 	X_GEN_M2: if ((N_INV >= 12) and (USE_SCALE = FALSE)) generate	 	
 		signal addrx		: std_logic_vector(9 downto 0);	
-		signal ww_enaz 		: std_logic_vector(10 downto 0);
+		signal ww_enaz 		: std_logic_vector(3 downto 0);
 		signal count 		: std_logic_vector(N_INV-12 downto 0);
 		
-		type std_array_cnt is array (8 downto 0) of std_logic_vector(N_INV-12 downto 0); 
+		type std_array_cnt is array (1 downto 0) of std_logic_vector(N_INV-12 downto 0); 
 		signal cntzz 		: std_array_cnt;
 	begin	
 		addrx <= addr(N_INV-2 downto N_INV-11);	
-		dpo <= ww32x1K(conv_integer(unsigned(addrx))) after td when rising_edge(clk);
+		dpo <= ww32x1K(conv_integer(unsigned(addrx))) when rising_edge(clk);
 		
-		ww_enaz <= ww_enaz(9 downto 0) & ww_ena after td when rising_edge(clk);	
+		ww_enaz <= ww_enaz(2 downto 0) & ww_ena when rising_edge(clk);	
 		count <= addr(N_INV-12 downto 0);
 		
-		cntzz <= cntzz(7 downto 0) & count after td when rising_edge(clk);	
-		X_TAYLOR_COE: fp23_cnt2flt_m1
+		cntzz <= cntzz(0 downto 0) & count when rising_edge(clk);	
+		X_TAYLOR_COE: entity work.fp23_cnt2flt_m1
 			generic map (
 				XSERIES  	=> XSERIES,
-				ii			=> N_INV-12,
-				td			=> td
+				ii			=> N_INV-12
 			)
 			port map (
 				rom_ww		=> ww_i,
-				rom_en		=> ww_enaz(10),--ww_ena,--ww_ena,
+				rom_en		=> ww_enaz(3),--ww_ena,--ww_ena,
 				   
 				dsp_ww		=> ww_o,			
-				int_cnt		=> cntzz(8),	
+				int_cnt		=> cntzz(1),	
 				
 				clk 		=> clk,
 				rstn  		=> reset

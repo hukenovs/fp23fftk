@@ -135,72 +135,7 @@ package	fp_m1_pkg is
 		data_i	: in std_logic_vector(15 downto 0);
 		data_o	: out fp23_data
 	);		
-	
-	component fp23_fix2float_m1 is
-		generic(
-			td			: time:=1ns	-- Time delay for simulation
-			);
-		port(
-			din			: in  std_logic_vector(15 downto 0);	-- Fixed input data					
-			ena			: in  std_logic;						-- Data enable 		
-			dout		: out fp23_data;						-- Float output data
-			vld			: out std_logic;						-- Data out valid      
-			clk			: in  std_logic;						-- Clock            
-			reset		: in  std_logic							-- Negative Reset            
-		);
-	end component;	
-	
-	component fp23_float2fix_m1 is
-	generic(
-		td			: time:=1ns; -- Time delay for simulation
-		DW			: integer:=16 -- Output data width
-	);
-		port(
-			din			: in  fp23_data;						-- Float input data	
-			ena			: in  std_logic;						-- Data enable                        
-			scale		: in  std_logic_vector(05 downto 0);	-- Scale factor 	   
-			dout		: out std_logic_vector(DW-1 downto 0);	-- Fixed output data
-			vld			: out std_logic;						-- Data out valid
-			clk			: in  std_logic;						-- Clock
-			reset		: in  std_logic;						-- Negative reset			
-			overflow	: out std_logic							-- Flag overflow 		                      
-		);
-	end component;	
-	
-	component fp23_mult_m1 is
-		generic(
-			XSERIES : string:="7SERIES"; --! Xilinx series
-			td		: time:=1ns	--! Time delay for simulation
-		);
-		port(
-			aa 		: in  fp23_data;	-- Multiplicand A
-			bb 		: in  fp23_data;	-- Multiplier B
-			cc 		: out fp23_data;	-- Product C
-			enable 	: in  std_logic;	-- Input data enable
-			valid	: out std_logic;	-- Output data valid
-			reset  	: in  std_logic;	-- Reset
-			clk 	: in  std_logic		-- Clock	
-		);	
-	end component;	
-	
-	component fp23_addsub_m1 is
-		generic (
-			td		: time:=1ns			-- Time delay for simulation
-			--addsub	: string(3 downto 1):="add"	-- add/sub attribute
-		);
-		port(
-			aa 		: in  fp23_data;	-- Summand/Minuend A   
-			bb 		: in  fp23_data;	-- Summand/Substrahend B     
-			cc 		: out fp23_data;	-- Sum/Dif C        
-			addsub	: in  std_logic;	-- '0' - Add, '1' - Sub
-			enable 	: in  std_logic;	-- Input data enable
-			valid	: out std_logic;	-- Output data valid
-			reset  	: in  std_logic;	-- Reset            
-			clk 	: in  std_logic		-- Clock	         
-		);
-	end component;	
-	
-	
+
 end fp_m1_pkg;
 
 package body fp_m1_pkg is

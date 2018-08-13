@@ -40,51 +40,41 @@ use ieee.std_logic_signed.all;
 use ieee.std_logic_arith.all;
 
 use work.fp_m1_pkg.fp23_complex;
---use work.fp23_fftNk_m2_pkg.all;
---use work.fp23_ifftNk_m2_pkg.all;
-
-use work.fp_m1_pkg.fp23_fix2float_m1;	
-use work.fp_m1_pkg.fp23_float2fix_m1;
 
 use ieee.std_logic_textio.all;
 use std.textio.all;				
-	
-	
+
 entity fp23_logic_m2 is
 	generic(
 		TD				: time:=1ns; 			--! Time delay for simulation
-		USE_TAYLOR		: boolean:=TRUE;		--! Use taylor algorithm for twiddle factor in COE generator	
-		USE_FLY_FFT		: boolean:=TRUE;		--! Use butterfly for FFT
-		USE_FLY_IFFT	: boolean:=TRUE;		--! Use butterfly for IFFT		
+		USE_TAYLOR		: boolean:=TRUE;		--! Use taylor algorithm for twiddle factor in COE generator		
 		USE_CONJ		: boolean:=TRUE;		--! Use conjugation for twiddle factor (COE)		
 		USE_PAIR		: boolean:=TRUE; 		--! Bitreverse mode: Even/Odd - "TRUE" or Half Pair - "FALSE". For FFT: "TRUE"	
 		DATATYPE		: integer:=23; 			--! Use integer (16) for twiddle instead of floating point (23)	
-		XSERIES			: string:="7SERIES";	--! FPGA family: for 6/7 series: "7SERIES"; for ULTRASCALE: "ULTRA";
-		NFFT			: integer :=12;			--! Number of FFT stages
+		XSERIES			: string:="ULTRA";	--! FPGA family: for 6/7 series: "7SERIES"; for ULTRASCALE: "ULTRA";
+		NFFT			: integer :=13;			--! Number of FFT stages
 		USE_DSP			: boolean:=TRUE; 		--! Use DSP48 for calculation PI * CNT				
 		USE_SCALE		: boolean:=FALSE 		--! Use full scale rambs for twiddle factor		
 	);														  
-	port(													  
-		-- tst_oa			: out std_logic_vector(15 downto 0);
-		-- tst_ob			: out std_logic_vector(15 downto 0);		
-		-- tst_en			: out std_logic;
-		
-		reset			: in std_logic;						--! Global reset  															  
-		clk				: in std_logic;						--! DSP clock	           											  
---		fix_float		: in std_logic;						--! FIX or FLOAT data
- 
-		din_re			: in std_logic_vector(15 downto 0);	--! Re data input
-		din_im			: in std_logic_vector(15 downto 0);	--! Im data input
-		din_en			: in std_logic;						--! Data enable
-		
-		dt_rev			: in std_logic;						--! FFT Bitreverse
-		dt_mux			: in std_logic_vector(01 downto 0); --! Data mux: "01" - Input, "10" - FFT, "11" - IFFT
-		dt_fft			: in std_logic;						--! IFFT Mux Source: '0' - from prev FFT, '1' - from IN 
-		fpscale			: in std_logic_vector(05 downto 0); --! Scale in Float2Fix
---		sf_re			: in std_logic_vector(15 downto 0);	--! Re part of Support function
---		sf_im			: in std_logic_vector(15 downto 0);	--! Im part of Support function		
---		sf_en			: in std_logic;						--! SF enable
---		sf_rw			: in std_logic;						--! SF read/write data
+	port( 
+		reset			: in  std_logic;						--! Global reset  															  
+		clk				: in  std_logic;						--! DSP clock	           											  
+
+		use_fly			: in  std_logic;		--! Use butterfly for FFT
+		use_ifly		: in  std_logic;		--! Use butterfly for IFFT		
+
+		din_re			: in  std_logic_vector(15 downto 0);	--! Re data input
+		din_im			: in  std_logic_vector(15 downto 0);	--! Im data input
+		din_en			: in  std_logic;						--! Data enable
+
+		dt_rev			: in  std_logic;						--! FFT Bitreverse
+		dt_mux			: in  std_logic_vector(01 downto 0); --! Data mux: "01" - Input, "10" - FFT, "11" - IFFT
+		dt_fft			: in  std_logic;						--! IFFT Mux Source: '0' - from prev FFT, '1' - from IN 
+		fpscale			: in  std_logic_vector(05 downto 0); --! Scale in Float2Fix
+--		sf_re			: in  std_logic_vector(15 downto 0);	--! Re part of Support function
+--		sf_im			: in  std_logic_vector(15 downto 0);	--! Im part of Support function		
+--		sf_en			: in  std_logic;						--! SF enable
+--		sf_rw			: in  std_logic;						--! SF read/write data
 
 		d_re 			: out std_logic_vector(15 downto 0);--! Output data Even
 		d_im 			: out std_logic_vector(15 downto 0);--! Output data Odd		
@@ -116,130 +106,6 @@ signal	fft_vl					: std_logic:='0';
 signal  rstn					: std_logic:='0';
 
 signal  valid_mux				: std_logic:='0';
-
-component fp_Ndelay_in_m1 is
-	generic (
-		td			: time:=1ns; -- Time delay for simulation
-		STAGES		: integer:=7; -- FFT stages
-		Nwidth		: integer:=48 -- Data width		
-	);
-	port(
-		din_re		: in  std_logic_vector(Nwidth-1 downto 0); -- Data Real
-		din_im		: in  std_logic_vector(Nwidth-1 downto 0); -- Data Imag
-		din_en		: in  std_logic; -- Data enable
-										
-		clk  		: in  std_logic; -- Clock
-		reset 		: in  std_logic; -- Reset		
-		
-		ca_re		: out std_logic_vector(Nwidth-1 downto 0); -- Even Real
-		ca_im		: out std_logic_vector(Nwidth-1 downto 0); -- Even Imag
-		cb_re		: out std_logic_vector(Nwidth-1 downto 0); -- Odd Real 
-		cb_im		: out std_logic_vector(Nwidth-1 downto 0); -- Odd Imag 		
-		dout_val	: out std_logic -- Data valid		
-	);	
-end component;
-
-component fp_Ndelay_out_m1
-	generic (
-		td			: time:=1ns; -- Time delay for simulation
-		STAGES		: integer:=7; -- FFT stages
-		Nwidth		: integer:=48 -- Data width
-	);
-	port(
-		dout_re		: out std_logic_vector(Nwidth-1 downto 0); -- Data Real
-		dout_im		: out std_logic_vector(Nwidth-1 downto 0); -- Data Imag
-		dout_val	: out std_logic; -- Data vaid
-							
-		clk  		: in std_logic; -- Clock
-		reset 		: in std_logic; -- Reset		
-		
-		ca_re		: in  std_logic_vector(Nwidth-1 downto 0); -- Even Real
-		ca_im		: in  std_logic_vector(Nwidth-1 downto 0); -- Even Imag
-		cb_re		: in  std_logic_vector(Nwidth-1 downto 0); -- Odd Real 
-		cb_im		: in  std_logic_vector(Nwidth-1 downto 0); -- Odd Imag 		
-		din_en		: in  std_logic -- Data enable	
-	);	
-end component;	
-
-component fp23_fftNk_m2 is
-	generic(													    
-		TD				: time:=1ns; 			-- Time delay for simulation
-		NFFT			: integer:=10;			-- Number of FFT stages     		
-		XSERIES			: string:="7SERIES";	-- FPGA family: for 6/7 series: "7SERIES"; for ULTRASCALE: "ULTRA";							
-		USE_SCALE		: boolean:=false; 		-- use full scale rambs for twiddle factor				
-		USE_FLY			: boolean:=true			-- Use butterfly                                 
-	);															                                                             
-	port(														                                                             
-		reset  			: in  std_logic;		-- Global reset 
-		clk 			: in  std_logic;		-- System clock 
-	
-		data_in0		: in fp23_complex;		-- Input data Even 						 	                                        
-		data_in1		: in fp23_complex;		-- Input data Odd			   				                                            
-		data_en			: in std_logic;			-- Input valid data					                                                             
- 
-		dout0 			: out fp23_complex;		-- Output data Even 	                                     
-		dout1 			: out fp23_complex;		-- Output data Odd	                                     
-		dout_val		: out std_logic			-- Output valid data	                                     		
-	);
-end component;
-
-component fp23_ifftNk_m2 is
-	generic(													    
-		TD				: time:=1ns; 			-- Time delay for simulation
-		NFFT			: integer:=10;			-- Number of FFT stages   
-		XSERIES			: string:="7SERIES";	-- FPGA family: for 6/7 series: "7SERIES"; for ULTRASCALE: "ULTRA";		  					
-		USE_SCALE		: boolean:=false; 		-- use full scale rambs for twiddle factor
-		USE_CONJ		: boolean:=false;		-- Use conjugation for the butterfly
-		USE_FLY			: boolean:=true			-- Use butterfly                                        
-	);		
-	port(
-		reset  			: in  std_logic;		-- Global reset 
-		clk 			: in  std_logic;		-- System clock 
-	
-		data_in0		: in fp23_complex;		-- Input data Even 						 	                                        
-		data_in1		: in fp23_complex;		-- Input data Odd			   				                                            
-		data_en			: in std_logic;			-- Input valid data					                                                             
- 
-		dout0 			: out fp23_complex;		-- Output data Even 	                                     
-		dout1 			: out fp23_complex;		-- Output data Odd	                                     
-		dout_val		: out std_logic			-- Output valid data		  
-	);
-end component;
-
-component fp_bitrev_m1 is
-	generic (
-		td			: time:=1ns; -- Time delay for simulation
-		PAIR		: boolean:=TRUE; -- Bitreverse mode: Even/Odd - "TRUE" or Half Pair - "FALSE". For FFT: "TRUE"		
-		STAGES		: integer:=4; -- FFT stages
-		Nwidth		: integer:=16 -- Data width		
-	);
-	port(								
-		clk  		: in  std_logic; -- Clock
-		reset 		: in  std_logic; -- Reset		
-				
-		di_dt		: in  std_logic_vector(Nwidth-1 downto 0); -- Data input
-		di_en		: in  std_logic; -- Data enable
-
-		do_dt		: out std_logic_vector(Nwidth-1 downto 0); -- Data output	
-		do_vl		: out std_logic -- Data valid		
-	);	
-end component;
-
--- type fp17x12_array	is array (12 downto 0) of fp23_complex;
-
--- attribute box_type				 : string;
---attribute box_type of input_buf	: label is "black_box";
---attribute box_type of fft	: label is "black_box";
---attribute box_type of fix0	: label is "black_box";	
---attribute box_type of fix1	: label is "black_box";	
---attribute box_type of fix2	: label is "black_box";	
---attribute box_type of fix3	: label is "black_box";	
-
---attribute buffer_type 	: string;
---attribute buffer_type  of clk: signal is "none";	
---attribute buffer_type  of gclk: signal is "none";	
-
-
 
 signal d_out_val				: std_logic;
 signal ifft_val					: std_logic;
@@ -286,7 +152,7 @@ rstn <= not reset when rising_edge(clk);
 		
 	
 -------------------- INPUT BUFFER --------------------
-xIN_BUF: fp_Ndelay_in_m1
+xIN_BUF:  entity work.fp_Ndelay_in_m1
 	generic map (
 		td			=> td,
 		STAGES 		=> NFFT,
@@ -308,7 +174,7 @@ xIN_BUF: fp_Ndelay_in_m1
 	);
 	
 -------------------- FIX to FLOAT CONVERSION (on DSP or LUT) --------------------	
-FIX0_IF: fp23_fix2float_m1 
+FIX0_IF: entity work.fp23_fix2float_m1 
 	port map(
 		din			=> ca_re,
 		ena			=> buf_en,
@@ -317,7 +183,7 @@ FIX0_IF: fp23_fix2float_m1
 		clk			=> clk,
 		reset		=> reset
 	);					
-FIX1_IF: fp23_fix2float_m1 
+FIX1_IF: entity work.fp23_fix2float_m1 
 	port map(
 		din			=> ca_im,
 		ena			=> buf_en,
@@ -326,7 +192,7 @@ FIX1_IF: fp23_fix2float_m1
 		clk			=> clk,
 		reset		=> reset
 	);	
-FIX2_IF: fp23_fix2float_m1 
+FIX2_IF: entity work.fp23_fix2float_m1 
 	port map(
 		din			=> cb_re,
 		ena			=> buf_en,
@@ -335,7 +201,7 @@ FIX2_IF: fp23_fix2float_m1
 		clk			=> clk,
 		reset		=> reset
 	);			
-FIX3_IF: fp23_fix2float_m1 
+FIX3_IF: entity work.fp23_fix2float_m1 
 	port map(
 		din			=> cb_im,
 		ena			=> buf_en,
@@ -346,15 +212,16 @@ FIX3_IF: fp23_fix2float_m1
 	);
 
 ------------------ FPFFTK_N (FORWARD FFT) --------------------		
-xFFT: fp23_fftNk_m2
-	generic map (
-		TD			=> TD,						
+xFFT: entity work.fp23_fftNk_m2
+	generic map (					
 		NFFT		=> NFFT,				
 		XSERIES		=> XSERIES,						
-		USE_SCALE	=> USE_SCALE,
-		USE_FLY     => USE_FLY_FFT   
+		USE_SCALE	=> USE_SCALE 
 	)
 	port map(						               
+		data_mux	=> NFFT-1,
+		use_fly		=> use_fly,
+		
 		data_in0	=> din0_fft,		
 		data_in1	=> din1_fft,			   
 		data_en		=> fft_en,		
@@ -383,26 +250,27 @@ begin
 	end if;
 end process;	
 	
- xIFFT: fp23_ifftNk_m2
+ xIFFT: entity work.fp23_ifftNk_m2
 	 generic map (
-		 TD			=> TD,
-		 NFFT		=> NFFT,
-		 XSERIES	=> XSERIES,				
-		 USE_SCALE	=> USE_SCALE,		
-		 USE_CONJ	=> USE_CONJ,	
-		 USE_FLY	=> USE_FLY_IFFT
+		NFFT		=> NFFT,
+		XSERIES		=> XSERIES,				
+		USE_SCALE	=> USE_SCALE,		
+		USE_CONJ	=> USE_CONJ
 	 )
-	 port map(						               
-		 data_in0	=> din0_ifft,   	
-		 data_in1	=> din1_ifft,		   
-		 data_en	=> ifft_en, 
+	port map(						               
+		data_mux	=> NFFT-1,
+		use_fly		=> use_ifly,
+		
+		data_in0	=> din0_ifft,   	
+		data_in1	=> din1_ifft,		   
+		data_en		=> ifft_en, 
 
-		 dout0 		=> dout0_ifft,
-		 dout1 		=> dout1_ifft,
-		 dout_val	=> ifft_val,
+		dout0 		=> dout0_ifft,
+		dout1 		=> dout1_ifft,
+		dout_val	=> ifft_val,
 
-		 reset  	=> reset, 
-		 clk 		=> clk
+		reset  		=> reset, 
+		clk 		=> clk
 	 ); 		
 	
 ------------------ MUX xDATA --------------------		
@@ -433,7 +301,7 @@ begin
 end process;	
 	
 ------------------ FLOAT2FIX --------------------		
-xFIX0RE: fp23_float2fix_m1
+xFIX0RE: entity work.fp23_float2fix_m1
 	port map (
 		din			=> dout0_mux.re,	
 		dout		=> fix_dout0_re,
@@ -445,7 +313,7 @@ xFIX0RE: fp23_float2fix_m1
 		overflow	=> over(0)                                       			
 	);	
 		
-xFIX1RE: fp23_float2fix_m1
+xFIX1RE: entity work.fp23_float2fix_m1
 	port map (
 		din			=> dout1_mux.re,	
 		dout		=> fix_dout1_re,
@@ -457,7 +325,7 @@ xFIX1RE: fp23_float2fix_m1
 		overflow	=> over(2)                                       			
 	);	
 	
-xFIX0IM: fp23_float2fix_m1
+xFIX0IM: entity work.fp23_float2fix_m1
 	port map (
 		din			=> dout0_mux.im,	
 		dout		=> fix_dout0_im,
@@ -469,7 +337,7 @@ xFIX0IM: fp23_float2fix_m1
 		overflow	=> over(1)                                       			
 	);	
 			
-xFIX1IM: fp23_float2fix_m1
+xFIX1IM: entity work.fp23_float2fix_m1
 	port map (
 		din			=> dout1_mux.im,	
 		dout		=> fix_dout1_im,
@@ -482,9 +350,8 @@ xFIX1IM: fp23_float2fix_m1
 	);		
 	
 -------------------- OUTPUT BUFFER --------------------	
-xOUT_BUF : fp_Ndelay_out_m1
+xOUT_BUF : entity work.fp_Ndelay_out
 	generic map (
-		td			=> td,
 		stages 		=> NFFT,
 		Nwidth		=> Nwidth
 	)
@@ -504,16 +371,17 @@ xOUT_BUF : fp_Ndelay_out_m1
 	);	
 	
 -------------------- BIT REVERSE ORDER --------------------			
-xBITREV_RE : fp_bitrev_m1
+xBITREV_RE : entity work.fp_bitrev_m1
 	generic map (
 		td			=> td,
+		FWT			=> FALSE,
 		PAIR		=> USE_PAIR,
 		STAGES		=> NFFT,
 		Nwidth		=> Nwidth	
 	)
 	port map (								
 		clk 		=> clk,
-		reset 		=> rstn,		
+		reset 		=> reset,		
 				
 		di_dt		=> dout_re,
 		di_en		=> dout_en,
@@ -522,16 +390,17 @@ xBITREV_RE : fp_bitrev_m1
 		do_vl		=> drev_en
 	);	
 
-xBITREV_IM : fp_bitrev_m1
+xBITREV_IM : entity work.fp_bitrev_m1
 	generic map (
 		td			=> td,
+		FWT			=> FALSE,
 		PAIR		=> USE_PAIR,
 		STAGES		=> NFFT,
 		Nwidth		=> Nwidth	
 	)
 	port map (								
 		clk 		=> clk,
-		reset 		=> rstn,		
+		reset 		=> reset,		
 				
 		di_dt		=> dout_im,
 		di_en		=> dout_en,
@@ -539,9 +408,7 @@ xBITREV_IM : fp_bitrev_m1
 		do_dt		=> drev_im,
 		do_vl		=> open
 	);	
-	
--- d_re <= dout_re when rising_edge(clk);	
--- d_im <= dout_im when rising_edge(clk);	
+
 ------------------ xDATA OUTPUT --------------------		
 pr_rev: process(clk) is
 begin
@@ -557,30 +424,5 @@ begin
 		end if;
 	end if;
 end process;	
-		
---------------------------------------------------------------------------------
-writing_dout: process(clk) is    -- write file_io.out (++ done goes to '1')
-	file log 					: TEXT open WRITE_MODE is "C:\share\fpfftk\rtl_half.dat";
-	variable str 				: LINE;
-	variable spc 				: string(1 to 4) := (others => ' ');
-	variable cnt 				: integer range -1 to 1600000000;	
-begin
-	if rising_edge(clk) then
-		if reset = '0' then
-			cnt := -1;		
-		elsif val(0) = '1' then
-			cnt := cnt + 1;	
-			--------------------------------
-			write(str, CONV_INTEGER(SIGNED(fix_dout0_re)), LEFT); write(str, spc);
-			write(str, CONV_INTEGER(SIGNED(fix_dout0_im)), LEFT); write(str, spc);	
-			write(str, CONV_INTEGER(SIGNED(fix_dout1_re)), LEFT); write(str, spc);	
-			write(str, CONV_INTEGER(SIGNED(fix_dout1_im)), LEFT); write(str, spc);				
-			--------------------------------
-			writeline(log, str);
-		else
-			null;
-		end if;
-	end if;
-end process; 		
-	
+
 end fp23_logic_m2;

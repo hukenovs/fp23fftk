@@ -46,50 +46,20 @@ use std.textio.all;
 use work.fp_m1_pkg.all;
 
 entity fp_main_test is 
-
+	generic(													    
+		NFFT			: integer:=10;			
+		XSERIES			: string:="7SERIES"
+		);
 end fp_main_test;
 
 architecture fp_main_test of fp_main_test is   		  
 
-component fp23_logic_m2 is
-	generic(
-		TD				: time:=1ns; 			
-		USE_FLY_FFT		: boolean:=TRUE;		
-		USE_FLY_IFFT	: boolean:=TRUE;		
-		USE_CONJ		: boolean:=FALSE;		
-		USE_PAIR		: boolean:=TRUE; 		
-		XSERIES			: string:="7SERIES";	
-		NFFT			: integer :=16;			
-		USE_SCALE		: boolean:=FALSE 		
-	);											
-	port(													  
-		reset			: in std_logic;											  
-		clk				: in std_logic;									  				
- 
-		din_re			: in  std_logic_vector(15 downto 0);	
-		din_im			: in  std_logic_vector(15 downto 0);	
-		din_en			: in  std_logic;						
-							 
-		dt_rev			: in  std_logic;						
-		dt_mux			: in  std_logic_vector(01 downto 0); 
-		dt_fft			: in  std_logic;						
-							 
-		fpscale			: in  std_logic_vector(05 downto 0); 					
-
-		d_re 			: out std_logic_vector(15 downto 0);
-		d_im 			: out std_logic_vector(15 downto 0);
-		d_vl			: out std_logic						
-		);
-end component;
-
 
 -- ******************************** --
 -- CHANGE STAGES TO EDIT FFT TEST!! --
-constant	NFFT 			: integer:=12; 
-constant	SCALE			: std_logic_vector(5 downto 0):="011100";
-constant	fix_float		: std_logic:='0'; -- CHANGE: 0 - FFT, 1 - NONE YET 	 
-constant	USE_FLY_FFT		: boolean:=TRUE;	
-constant	USE_FLY_IFFT	: boolean:=TRUE;	
+constant	SCALE			: std_logic_vector(5 downto 0):="011010"; 
+constant	USE_FLY_FFT		: std_logic:='1';	
+constant	USE_FLY_IFFT	: std_logic:='1';	
 constant	USE_SCALE		: boolean:=FALSE; -- TRUE - MAX RAMBs, FALSE - TAYLOR ALGO	
 -- ******************************** -- 
 
@@ -130,8 +100,8 @@ begin
 		lp_inf: for jj in 0 to 31 loop	   
 			file_close( file_dt_re);
 			file_close( file_dt_im);				
-			file_open( file_dt_re, "H:\Work\_MATH\din_re.dat", read_mode );
-			file_open( file_dt_im, "H:\Work\_MATH\din_im.dat", read_mode );						
+			file_open( file_dt_re, "../../../../../math/din_re.dat", read_mode );
+			file_open( file_dt_im, "../../../../../math/din_im.dat", read_mode );						
 			count :=0;
 			
 			wait for 50 ns;
@@ -168,7 +138,7 @@ begin
 end process;  
 --------------------------------------------------------------------------------
 write_dout: process(clk) is    -- write file_io.out (++ done goes to '1')
-	file log 					: TEXT open WRITE_MODE is "H:\Work\_MATH\fp_rtl.dat";
+	file log 					: TEXT open WRITE_MODE is "../../../../../math/dat_out.dat";
 	variable str 				: LINE;
 	variable spc 				: string(1 to 4) := (others => ' ');
 	variable cnt 				: integer range -1 to 1600000000;	
@@ -190,14 +160,11 @@ begin
 	end if;
 end process; 		
 --------------------------------------------------------------------------------
-uut: fp23_logic_m2
-	generic map ( 
-		TD			=> 1ns,						
-		USE_FLY_FFT	=> USE_FLY_FFT,
-		USE_FLY_IFFT=> USE_FLY_IFFT,
+uut: entity work.fp23_logic_m2
+	generic map (
 		USE_CONJ	=> FALSE,			
 		USE_PAIR	=> TRUE,		
-		XSERIES		=> "7SERIES",			
+		XSERIES		=> XSERIES,			
 		NFFT		=> NFFT,								
 		USE_SCALE	=> USE_SCALE				
 	)
@@ -205,6 +172,9 @@ uut: fp23_logic_m2
 		reset		=> reset,	
 		clk			=> clk,	
  
+        use_fly	    => USE_FLY_FFT,
+        use_ifly    => USE_FLY_IFFT,
+
 		dt_rev		=> '0',
 		dt_mux		=> "11",
 		dt_fft		=> '0',

@@ -39,7 +39,21 @@
 --	Version 1.5  19.10.2015 
 --			   	 FP24 -> FP23. Reduce 2 bits.
 --					Total time delay is 14 clocks! 
---			
+--		
+--	Version 1.6  01.11.2017 
+--			   	 Remove old UNISIM logic for 6/7 series. Works w/ Ultrascale.
+--					Reduce total delay on 4 clocks. (-4 taps).
+--					Total time delay is 10 clocks! 
+--
+--	Version 1.7  21.02.2018 
+--			   	 Fixed subnormal zeros calculation.
+--
+--	Version 1.8  24.02.2018 
+--			   	 Added: SET_ZERO: when Exponent shifting = b'11111;
+--						SET_ONES: when Exp(A) < Exp shifting (exp out = 0x01)
+--						EXP_NORM: when Exp(A) >= Exp shifting (normal op)
+--
+--
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 --
@@ -75,59 +89,22 @@ use ieee.std_logic_unsigned.all;
 library work;
 use work.fp_m1_pkg.fp23_data;
 
-library unisim;
-use unisim.vcomponents.DSP48E1;
-
 entity fp23_addsub_m1 is
-	generic (
-		td		: time:=1ns			--! Time delay for simulation
-		--addsub	: string(3 downto 1):="add"	--! add/sub attribute
-	);
 	port(
 		aa 		: in  fp23_data;	--! Summand/Minuend A   
 		bb 		: in  fp23_data;	--! Summand/Substrahend B     
 		cc 		: out fp23_data;	--! Sum/Dif C        
 		addsub	: in  std_logic;	--! '0' - Add, '1' - Sub
+		reset	: in  std_logic;	--! '0' - Reset
 		enable 	: in  std_logic;	--! Input data enable
-		valid	: out std_logic;	--! Output data valid
-		reset  	: in  std_logic;	--! Reset            
+		valid	: out std_logic;	--! Output data valid          
 		clk 	: in  std_logic		--! Clock	         
 	);
 end fp23_addsub_m1;
 
 architecture fp23_addsub_m1 of fp23_addsub_m1 is 
 
-component sp_addsub_m1 is
-	generic(	
-		N 		: integer
-	);
-	port(
-		data_a 	: in  std_logic_vector(N-1 downto 0);
-		data_b 	: in  std_logic_vector(N-1 downto 0);
-		data_c 	: out std_logic_vector(N-1 downto 0);
-		add_sub	: in  std_logic;  -- '0' - add, '1' - sub
-		cin     : in  std_logic:='0';
-		cout    : out std_logic;
-		clk    	: in  std_logic;
-		ce 		: in  std_logic:='1';	
-		aclr  	: in  std_logic:='1'
-	);
-end component;
-
-component sp_msb_decoder_m2 is
-	port(
-		din 	: in  std_logic_vector(31 downto 0);
-		din_en  : in  std_logic;
-		clk 	: in  std_logic;
-		reset 	: in  std_logic;
-		dout 	: out std_logic_vector(4 downto 0)
-	);
-end component;
-
-type std_logic_array_9x6 is array (7 downto 0) of std_logic_vector(5 downto 0);
-type std_logic_array_5x16 is array (4 downto 0) of std_logic_vector(15 downto 0);
-
-signal rstp				: std_logic; 
+type std_logic_array_4x6 is array (4 downto 0) of std_logic_vector(5 downto 0);
 
 signal aa_z			   	: fp23_data;	  
 signal bb_z				: fp23_data;
@@ -147,32 +124,26 @@ signal implied_b		: std_logic;
 signal man_az			: std_logic_vector(16 downto 0);
 signal subtract         : std_logic_vector(2 downto 0);
 
-signal sum_manz			: std_logic_array_5x16;
+signal sum_manz			: std_logic_vector(15 downto 0);
+signal sum_mant			: std_logic_vector(15 downto 0);
 
-signal msb_dec			: std_logic_vector(31 downto 0);
+signal msb_dec			: std_logic_vector(15 downto 0);
 signal msb_num			: std_logic_vector(4 downto 0);
 signal msb_numn			: std_logic_vector(5 downto 0);
 
 signal expc				: std_logic_vector(5 downto 0);
 signal norm_c           : std_logic_vector(15 downto 0);
 signal frac           	: std_logic_vector(15 downto 0);
-signal expci			: std_logic_vector(5 downto 0);
-signal expciz			: std_logic_vector(5 downto 0);
-signal expcizz			: std_logic_vector(5 downto 0);
-signal set_zero			: std_logic;
 
-signal expaz			: std_logic_array_9x6;
-signal exp_underflow	: std_logic;
-signal exp_underflowz	: std_logic;
-signal sign_c			: std_logic_vector(9 downto 0);
+signal set_zero			: std_logic;
+signal set_ones			: std_logic;
+
+signal expaz			: std_logic_array_4x6;
+signal sign_c			: std_logic_vector(5 downto 0);
 
 signal exch				: std_logic;
-signal exchange			: std_logic; 
---signal sum_manx			: std_logic_vector(31 downto 0);
-signal msb_numz			: std_logic_vector(4 downto 0);
-signal msb_numzz		: std_logic_vector(4 downto 0);
 
-signal dout_val_v		: std_logic_vector(12 downto 0);
+signal dout_val_v		: std_logic_vector(8 downto 0);
 
 signal man_shift		: std_logic_vector(16 downto 0);
 signal norm_man			: std_logic_vector(16 downto 0);
@@ -180,257 +151,257 @@ signal diff_man			: std_logic_vector(16 downto 0);
 
 signal diff_exp			: std_logic_vector(4 downto 0);
 signal man_azz			: std_logic_vector(16 downto 0);
-signal sum_co			: std_logic; 
-signal ext_sum			: std_logic;
 
-signal sum_mt			: std_logic_vector(16 downto 0);
+signal sum_mt			: std_logic_vector(17 downto 0);
 signal addsign			: std_logic;
+
+signal rstp				: std_logic;
+
+signal exp_a0			: std_logic;
+signal exp_b0			: std_logic;
+signal exp_ab			: std_logic;
+signal exp_zz			: std_logic_vector(6 downto 0);
 
 begin	
 	
-rstp <= not reset after td when rising_edge(clk); 
-
---x_addgen: if addsub = "add" generate
---	bb_z <= bb after td when rising_edge(clk);
---end generate;
---x_subgen: if addsub = "sub" generate
---	bb_z <= (bb(21 downto 16) & (not bb(15)) & bb(14 downto 0)) after td when rising_edge(clk);
---end generate;	 
+rstp <= not reset when rising_edge(clk); 	
 
 -- add or sub operation --
-aa_z <= aa after td when rising_edge(clk);
+aa_z <= aa when rising_edge(clk);
 pr_addsub: process(clk) is
 begin
 	if rising_edge(clk) then
 		if (addsub = '0') then
-			bb_z <= bb after td;
+			bb_z <= bb;
 		else
-			bb_z <= (bb.exp, not bb.sig, bb.man) after td;
+			bb_z <= (bb.exp, not bb.sig, bb.man);
 		end if;
 	end if;
 end process;
+
+exp_a0 <= (aa.exp(0) or aa.exp(1) or aa.exp(2) or aa.exp(3) or aa.exp(4) or aa.exp(5)) when rising_edge(clk) and enable = '1';
+exp_b0 <= (bb.exp(0) or bb.exp(1) or bb.exp(2) or bb.exp(3) or bb.exp(4) or bb.exp(5)) when rising_edge(clk) and enable = '1';
+
+exp_ab <= not (exp_a0 or exp_b0) when rising_edge(clk);
+-- exp_ab <= '0';
+exp_zz <= exp_zz(exp_zz'left-1 downto 0) & exp_ab when rising_edge(clk);
 
 -- check difference (least/most attribute) --
 aatr <= aa.exp & aa.man;
 bbtr <= bb.exp & bb.man;
 
-AB_SUB: sp_addsub_m1
-	generic map(N => 22)
-	port map(
-		data_a 	=> aatr, 
-		data_b 	=> bbtr, 
-		--data_c 	=> , 		
-		add_sub	=> '0', 				
-		cin     => '1', 	
-		cout    => exchange,	
-		clk    	=> clk, 				
-		ce 		=> enable, 								
-		aclr  	=> rstp 				
-	);
-  
--- exchange data --	
 pr_ex: process(clk) is
 begin
 	if rising_edge(clk) then
-		if (rstp = '1') then
-			exch <= '1' after td;
-		else	
-			exch <= exchange after td; 
+		if (aatr < bbtr) then
+			exch <= '0';
+		else
+			exch <= '1';
 		end if;
 	end if;
-end process;
+end process; 
 
 -- data switch multiplexer --			
 pr_mux: process(clk) is
 begin
 	if rising_edge(clk) then
 		if (exch = '0') then
-			muxa <= bb_z after td;
-			muxb <= aa_z after td;
+			muxa <= bb_z;
+			muxb <= aa_z;
 		else
-			muxa <= aa_z after td;
-			muxb <= bb_z after td;
+			muxa <= aa_z;
+			muxb <= bb_z;
 		end if;
+		muxaz <= muxa; 
+		muxbz <= muxb.man;			
 	end if;							   
 end process;
-
-muxaz <= muxa after td when rising_edge(clk);
-muxbz <= muxb.man after td when rising_edge(clk);			
 
 -- implied '1' for fraction --
 pr_imp: process(clk) is
 begin
 	if rising_edge(clk) then
 		if (muxa.exp = "000000") then
-			implied_a <= '0' after td;
+			implied_a <= '0';
 		else
-			implied_a <= '1' after td;
+			implied_a <= '1';
 		end if;
 		
 		if (muxb.exp = "000000") then	
-			implied_b <= '0' after td;
+			implied_b <= '0';
 		else
-			implied_b <= '1' after td;
+			implied_b <= '1';
 		end if;	
 	end if;
 end process;
 
 -- find exponent --
-EXP_SUB: sp_addsub_m1
-	generic map(N => 6) 
-	port map(
-		data_a 	=> muxa.exp, 
-		data_b 	=> muxb.exp, 
-		data_c 	=> exp_dif, 		
-		add_sub	=> '0', 				
-		cin     => '1', 	
-		--cout    => ,	
-		clk    	=> clk, 				
-		ce 		=> '1', 								
-		aclr  	=> rstp 				
-	);
-	
-diff_exp <= exp_dif(5 downto 1) after td when rising_edge(clk);
+exp_dif <= muxa.exp - muxb.exp when rising_edge(clk);
+diff_exp <= exp_dif(5 downto 1) when rising_edge(clk);
 
 pr_del: process(clk) is
 begin
 	if rising_edge(clk) then
-		man_az <= implied_a & muxaz.man after td;
-		subtract(0) <= muxa.sig xor muxb.sig after td;
-		subtract(1) <= subtract(0) after td;
-		subtract(2) <= subtract(1) after td;
+		man_az <= implied_a & muxaz.man;
+		subtract(0) <= muxa.sig xor muxb.sig;
+		subtract(1) <= subtract(0);
+		subtract(2) <= subtract(1);
 	end if;
 end process;
 
 man_shift <= implied_b & muxbz;	
-norm_man <= STD_LOGIC_VECTOR(SHR(UNSIGNED(man_shift), UNSIGNED(exp_dif(3 downto 0)))) after td when rising_edge(clk);	
+norm_man <= STD_LOGIC_VECTOR(SHR(UNSIGNED(man_shift), UNSIGNED(exp_dif(3 downto 0)))) when rising_edge(clk);	
 
 pr_norm_man: process(clk) is
 begin
 	if rising_edge(clk) then
 		if (diff_exp(4 downto 3) = "00") then
-			diff_man <= norm_man after td;
+			diff_man <= norm_man;
 		else
-			diff_man <= (others => '0') after td;
+			diff_man <= (others => '0');
 		end if;
 	end if;
 end process;
 
-man_azz <= man_az after td when rising_edge(clk);
-addsign <= not subtract(1) after td when rising_edge(clk); 
+man_azz <= man_az when rising_edge(clk);
+addsign <= not subtract(1) when rising_edge(clk); 
+
 
 -- sum of fractions --
-MAN_ADD: sp_addsub_m1
-	generic map(N => 17) 
-	port map(
-		data_a 	=> man_azz, 
-		data_b 	=> diff_man, 
-		data_c 	=> sum_mt, 		
-		add_sub	=> addsign, 				
-		cin     => subtract(2), 	
-		cout    => sum_co,	
-		clk    	=> clk, 				
-		ce 		=> '1', 								
-		aclr  	=> rstp 				
-	);
-	
-ext_sum <= (sum_co xor subtract(2)) after td when rising_edge(clk);	
+pr_man: process(clk) is
+begin
+	if rising_edge(clk) then
+		if (addsign = '1') then
+			sum_mt <= ('0' & man_azz) + ('0' & diff_man);
+		else
+			sum_mt <= ('0' & man_azz) - ('0' & diff_man);
+		end if;
+	end if;
+end process;
 
-msb_dec(31 downto 16) <= ext_sum & sum_mt(16 downto 2); -- ???
-msb_dec(15 downto 0) <= x"0000";
+msb_dec <= sum_mt(17 downto 2);
 
-msb_seeker: sp_msb_decoder_m2 
-	port map(
-	din 	=> msb_dec, 	
-	din_en  => '1', 					
-	clk 	=> clk, 					
-	reset 	=> rstp, 					
-	dout 	=> msb_num 			
-	--dout_val=> 						
-	);
+---- find MSB (highest '1' position) ----
+pr_leadms: process(clk) is
+begin 
+	if rising_edge(clk) then 
+		if    (msb_dec(15-00)='1') then msb_num <= "00000";-- "11111";
+		elsif (msb_dec(15-01)='1') then msb_num <= "00001";-- "11110";
+		elsif (msb_dec(15-02)='1') then msb_num <= "00010";-- "11101";
+		elsif (msb_dec(15-03)='1') then msb_num <= "00011";-- "11100";
+		elsif (msb_dec(15-04)='1') then msb_num <= "00100";-- "11011";
+		elsif (msb_dec(15-05)='1') then msb_num <= "00101";-- "11010";
+		elsif (msb_dec(15-06)='1') then msb_num <= "00110";-- "11001";
+		elsif (msb_dec(15-07)='1') then msb_num <= "00111";-- "11000";
+		elsif (msb_dec(15-08)='1') then msb_num <= "01000";-- "10111";
+		elsif (msb_dec(15-09)='1') then msb_num <= "01001";-- "10110";
+		elsif (msb_dec(15-10)='1') then msb_num <= "01010";-- "10101";
+		elsif (msb_dec(15-11)='1') then msb_num <= "01011";-- "10100";
+		elsif (msb_dec(15-12)='1') then msb_num <= "01100";-- "10011";
+		elsif (msb_dec(15-13)='1') then msb_num <= "01101";-- "10010";
+		elsif (msb_dec(15-14)='1') then msb_num <= "01110";-- "10001";
+		elsif (msb_dec(15-15)='1') then msb_num <= "01111";-- "10000";
+		else msb_num <= "11111";                    
+		end if;	
+	end if;
+end process;	
 	
-msb_numn <= ("0" & not msb_num) after td when rising_edge(clk);
-msb_numz <= msb_num(4 downto 0) after td when rising_edge(clk);
-msb_numzz <= msb_numz after td when rising_edge(clk);
+msb_numn <= ("0" & msb_num) when rising_edge(clk);
 ----------------------------------------
-
 pr_manz: process(clk) is
 begin
 	if rising_edge(clk) then 
-		sum_manz(0) <= sum_mt(16 downto 1); --sum_man(33 downto 16);
-		xdel: for ii in 0 to 3 loop			
-			sum_manz(ii+1) <= sum_manz(ii) after td;
-		end loop;	
+		sum_mant <= sum_mt(16 downto 1);
+		sum_manz <= sum_mant;
 	end if;
 end process;
 
---sum_manx(31 downto 16) <= sum_manz(4);
---sum_manx(15 downto 00) <= (others => '0');
 ----------------------------------------
 
 -- second barrel shifter --
---norm_c <= sum_manx(31-conv_integer(msb_numn(3 downto 0)) downto 16-conv_integer(msb_numn(3 downto 0))) after td when rising_edge(clk); 
-norm_c <= STD_LOGIC_VECTOR(SHL(UNSIGNED(sum_manz(4)), UNSIGNED(msb_numn(3 downto 0)))) after td when rising_edge(clk);	
-frac <= norm_c after td when rising_edge(clk);
+--norm_c <= sum_manx(31-conv_integer(msb_numn(3 downto 0)) downto 16-conv_integer(msb_numn(3 downto 0))) when rising_edge(clk); 
+norm_c <= STD_LOGIC_VECTOR(SHL(UNSIGNED(sum_mant), UNSIGNED(msb_num(4 downto 0)))) when rising_edge(clk);	
+frac <= norm_c when rising_edge(clk);
 
--- normalize MSB for exp --
-NORM_SUB: sp_addsub_m1
-	generic map(N => 6)
-	port map(
-		data_a 	=> expaz(7),  --expaz(8), --
-		data_b 	=> msb_numn, 
-		data_c 	=> expc, 		
-		add_sub	=> '0', 
-		cin     => '1', 
-		cout    => exp_underflow ,	 
-		clk    	=> clk, 
-		ce 		=> '1',--dout_val_v(10),
-		aclr  	=> rstp 
-	);					 
+-- pr_set: process(clk) is
+-- begin
+	-- if rising_edge(clk) then 
+		-- if (expaz(3) <= msb_num) then
+			-- -- set_zero <= '1';
+		-- -- else
+			-- -- set_zero <= '0';
+			-- set_zero <= '1';
+		-- else
+			-- set_zero <= '0';			
+		-- end if;
+	-- end if;
+-- end process;				 
+  
+pr_set0: process(clk) is
+begin
+	if rising_edge(clk) then 
+		set_zero <= (msb_num(4) and msb_num(3) and msb_num(2) and msb_num(1) and msb_num(0));
+	end if;
+end process;  
+
+pr_set1: process(clk) is
+begin
+	if rising_edge(clk) then 
+		if (expaz(3) < ('0' & msb_num)) then
+			set_ones <= '1';
+		else
+			set_ones <= '0';
+		end if;
+	end if;
+end process; 
   
 -- exponent increment --	
-EXP_INC: sp_addsub_m1
-	generic map(N => 6)
-	port map(
-		data_a 	=> expc, 
-		data_b 	=> "000000", 
-		data_c 	=> expci, 		
-		add_sub	=> '1', 
-		cin     => '1', 
-		--cout    =>  ,	 
-		clk    	=> clk, 
-		ce 		=> '1',--dout_val_v(11),
-		aclr  	=> set_zero 
-	); 
-	
--- underflow flag for data --	
-pr_und: process(clk) is 
+pr_expx: process(clk) is
 begin
-	if rising_edge(clk) then
-		--if dout_val_v(10) = '1' then
-			exp_underflowz <= exp_underflow;
-		--end if;
+	if rising_edge(clk) then 
+		if (set_zero = '0') then
+			if (set_ones = '0') then
+				expc <= expaz(4) - msb_numn + '1';
+			else
+				expc <= "000001";
+			end if;
+		else
+			expc <= "000000";
+		end if;
 	end if;
 end process;
-set_zero <= not ((msb_numzz(4) or msb_numzz(3) or msb_numzz(2) or msb_numzz(1) or msb_numzz(0)) and exp_underflowz);
 
 -- exp & sign delay --
 pr_expz: process(clk) is
 begin
 	if rising_edge(clk) then
-		expaz(0) <= muxaz.exp after td;
-		for ii in 0 to 6 loop
-			expaz(ii+1) <= expaz(ii) after td;
+		expaz(0) <= muxaz.exp;
+		for ii in 0 to 3 loop
+			expaz(ii+1) <= expaz(ii);
 		end loop;		
 	end if;
 end process;	
 
-sign_c <= sign_c(8 downto 0) & muxaz.sig after td when rising_edge(clk);
-
+sign_c <= sign_c(sign_c'left-1 downto 0) & muxaz.sig when rising_edge(clk);
 -- data out and result --	
-cc <= (expci, sign_c(9), frac) after td when rising_edge(clk);
+--cc <= (expc, sign_c(sign_c'left), frac) when rising_edge(clk);
 
-dout_val_v <= dout_val_v(11 downto 0) & enable after td when rising_edge(clk);
-valid <= dout_val_v(12) after td when rising_edge(clk);
+pr_dout: process(clk) is
+begin 		
+	if rising_edge(clk) then
+		if (rstp = '1') then
+			cc <= ("000000", '0', x"0000");
+		else
+			if (exp_zz(exp_zz'left) = '1') then
+				cc <= ("000000", sign_c(sign_c'left), frac);
+			else
+				cc <= (expc,     sign_c(sign_c'left), frac);
+			end if;
+		end if;
+	end if;
+end process;
+
+dout_val_v <= dout_val_v(dout_val_v'left-1 downto 0) & enable when rising_edge(clk);
+valid <= dout_val_v(dout_val_v'left) when rising_edge(clk);
 
 end fp23_addsub_m1;

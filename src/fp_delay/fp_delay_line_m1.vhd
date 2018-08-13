@@ -42,7 +42,11 @@
 --	
 --	Version 1.2  03.03.2016 
 --				 Removed suboptimal logic blocks.
---					
+--	
+--	Version 1.3  13.11.2017 
+--				 Delay line for a valid signal has been removed.
+--               New logic for a delay line takes only 2 counters.
+--				
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 --
@@ -119,16 +123,16 @@ signal iaz 				: std_logic_vector(Nwidth-1 downto 0);
 begin
  
 -- Common processes for delay lines --
-rstp <= not reset after td when rising_edge(clk);	
+rstp <= not reset when rising_edge(clk);	
 	
 pr_cnt_wrcr: process(clk) is
 begin
 	if rising_edge(clk) then
-		if (reset = '0') then 
+		if (rstp = '1') then 
 			cnt_wrcr <= (others => '0');			
 		else
 			if (din_enz = '1') then
-				cnt_wrcr <= cnt_wrcr + '1' after td;
+				cnt_wrcr <= cnt_wrcr + '1';
 			end if;
 		end if;	
 	end if;
@@ -142,18 +146,18 @@ begin
 			ram1_din <=	(others => '0');
 		else
 			if (din_en = '1') then
-				ram0_din <=	ib after td;
+				ram0_din <=	ib;
 			end if;
 			if (cross = '1') then
-				ram1_din <= ram0_dout after td; 
+				ram1_din <= ram0_dout; 
 			else
-				ram1_din <= iaz after td; 
+				ram1_din <= iaz; 
 			end if;							
 		end if;
 	end if;
 end process; 
 
-oa	<=	oa_e;
+oa <= oa_e;
 
 G_DEL_SHORT: if (N_INV < 9) generate
 	signal ram_del : std_logic_vector(2**(N_INV)-1 downto 0):=(others=>'0');
@@ -163,15 +167,15 @@ begin
 	cross <= cnt_wrcr(N_INV);	
 	iaz <= ia;
 	
-	ram_del <= ram_del(2**(N_INV)-2 downto 0) & din_en after td when rising_edge(clk);
+	ram_del <= ram_del(2**(N_INV)-2 downto 0) & din_en when rising_edge(clk);
 	-- RAMB delay line -- 
 	GEN_GRT1: if (N_INV > 0) generate
 		constant delay  : integer:=2**(N_INV)-2;
 		type std_logic_array_NarrxNwidth is array (delay downto 0) of std_logic_vector(Nwidth-1 downto 0);	
 		signal dout0, dout1	: std_logic_array_NarrxNwidth;
 	begin			
-		dout1 <= dout1(delay-1 downto 0) & ram1_din after td when rising_edge(clk);	
-		dout0 <= dout0(delay-1 downto 0) & ram0_din after td when rising_edge(clk);
+		dout1 <= dout1(delay-1 downto 0) & ram1_din when rising_edge(clk);	
+		dout0 <= dout0(delay-1 downto 0) & ram0_din when rising_edge(clk);
 
 		ram1_dout <= dout1(delay);
 		ram0_dout <= dout0(delay);
@@ -182,17 +186,17 @@ begin
 		ram1_dout <= ram1_din;
 	end generate;
 	
-	dout_val <= ram_del(2**(N_INV)-1) after td when rising_edge(clk);
+	dout_val <= ram_del(2**(N_INV)-1) when rising_edge(clk);
 	
 	pr_out: process(clk) is
 	begin
 		if rising_edge(clk) then
 			if (ram_del(2**(N_INV)-1) = '1') then
-				oa_e <= ram1_dout after td;
+				oa_e <= ram1_dout;
 				if (cross = '1') then
-					ob_e <= ia after td;   			
+					ob_e <= ia;   			
 				else
-					ob_e <= ram0_dout after td; 			
+					ob_e <= ram0_dout; 			
 				end if;
 			end if;
 		end if;
@@ -203,6 +207,11 @@ end generate;
 
 G_DEL_LONG: if (N_INV >= 9) generate
 	
+	signal rw_del		: std_logic;
+	signal cnt_trd		: std_logic_vector(NFFT-2-stage downto 0);	
+	signal cnt_twr		: std_logic_vector(NFFT-2-stage downto 0);		
+	signal cnt_ena		: std_logic;
+	
 	signal cnt_wr 		: std_logic_vector(N_INV-1 downto 0);	
 	
 	signal addrs		: std_logic_vector(N_INV-1 downto 0); 
@@ -211,12 +220,11 @@ G_DEL_LONG: if (N_INV >= 9) generate
 	signal addrz1		: std_logic_vector(N_INV-1 downto 0);
 	
 	signal dir_dia		: std_logic_vector(Nwidth-1 downto 0);
-	signal obz			: std_logic_vector(Nwidth-1 downto 0);	  
+	  
 	signal ob_z			: std_logic_vector(Nwidth-1 downto 0);	
 	
 	signal del_o		: std_logic;
-	signal cnt_rd		: std_logic_vector(NFFT-3-stage downto 0);
-	
+
 	signal we			: std_logic:='0';
 	signal wes			: std_logic:='0';
 	signal wes1			: std_logic:='0';
@@ -224,16 +232,11 @@ G_DEL_LONG: if (N_INV >= 9) generate
 	signal wez1			: std_logic:='0';
 	signal val			: std_logic:='0';
 	
-	type ram_d is array(0 to 2**(N_INV)-1) of std_logic; 
-	
-	signal ram_del		: ram_d;
-	attribute ram_style	: string;
-	attribute ram_style of RAM_DEL : signal is "block";
-	
-
 	type ram_t is array(0 to 2**(N_INV)-1) of std_logic_vector(Nwidth-1 downto 0);  
 	signal bram0					: ram_t;
 	signal bram1					: ram_t;	
+	
+	attribute ram_style	: string;
 	attribute ram_style of bram0	: signal is "block";		
 	attribute ram_style of bram1	: signal is "block";
 	
@@ -241,36 +244,75 @@ G_DEL_LONG: if (N_INV >= 9) generate
 	
 begin
 	
-	din_enz <= din_en after td when rising_edge(clk);	
-	cross <= cnt_wrcr(N_INV) after td when rising_edge(clk);	 	
-	ia_ze <= ia after td when rising_edge(clk);
-	iaz <= ia_ze after td when rising_edge(clk);
+	pr_cnd: process(clk) is
+	begin
+		if rising_edge(clk) then
+			if (rstp = '1') then 
+				cnt_trd <= (0 => '1', others => '0');
+				cnt_twr <= (0 => '1', others => '0');
+				cnt_ena <= '0';
+			else
+				-- @write data --
+				if (cnt_trd(NFFT-2-stage) = '1') then
+					cnt_trd <= (0 => '1', others => '0');
+				else 
+					if (din_en = '1') then
+						cnt_trd <= cnt_trd + '1';
+					end if;	
+				end if;				
+				
+				
+				-- delayed data enable --
+				if (cnt_trd(NFFT-2-stage) = '1') then
+					cnt_ena <= '1';
+				elsif (cnt_twr(NFFT-2-stage) = '1') then
+					cnt_ena <= '0';
+				end if;
+				-- @read data --
+				if (cnt_twr(NFFT-2-stage) = '1') then
+					cnt_twr <= (0 => '1', others => '0');
+				else 
+					if (cnt_ena = '1') then
+						cnt_twr <= cnt_twr + '1';
+					end if;	
+				end if;				
+			end if;
+		end if;
+	end process;	
+	del_o <= cnt_ena when rising_edge(clk); 	
 	
-	we   <=	din_en after td when rising_edge(clk);
-	wez  <=	we after td when rising_edge(clk);
+	
+	
+	din_enz <= din_en when rising_edge(clk);	
+	cross <= cnt_wrcr(N_INV) when rising_edge(clk);	 	
+	ia_ze <= ia when rising_edge(clk);
+	iaz <= ia_ze when rising_edge(clk);
+	
+	we   <=	din_en when rising_edge(clk);
+	wez  <=	we when rising_edge(clk);
 
-	wes  <=	wez after td when rising_edge(clk);
+	wes  <=	wez when rising_edge(clk);
 	
-	wez1 <=	del_o after td when rising_edge(clk); 	
-	wes1 <=	wez1 after td when rising_edge(clk); 
-	val <= wes1 after td when rising_edge(clk);
-	dout_val <= val after td when rising_edge(clk);	
+	wez1 <=	del_o when rising_edge(clk); 	
+	wes1 <=	wez1 when rising_edge(clk); 
+	val <= wes1 when rising_edge(clk);
+	dout_val <= val when rising_edge(clk);	
 	
-	addrz   <= cnt_wrcr(N_INV-1 downto 0) after td when rising_edge(clk);
-	addrz1  <= cnt_wr after td when rising_edge(clk);	
-	addrs   <= addrz after td when rising_edge(clk);
-	addrs1  <= addrz1 after td when rising_edge(clk);	
+	addrz   <= cnt_wrcr(N_INV-1 downto 0) when rising_edge(clk);
+	addrz1  <= cnt_wr when rising_edge(clk);	
+	addrs   <= addrz when rising_edge(clk);
+	addrs1  <= addrz1 when rising_edge(clk);	
 	
 	pr_cnt: process(clk) is
 	begin
 		if rising_edge(clk) then
 			if (rstp = '1') then 
 				cnt_wr <= (others => '0');
-				cnt_rd <= (others => '0');
+				-- cnt_rd <= (others => '0');
 			else
-				cnt_rd <= cnt_rd + '1' after td;
+				-- cnt_rd <= cnt_rd + '1';
 				if (del_o = '1') then
-					cnt_wr <= cnt_wr + '1' after td;
+					cnt_wr <= cnt_wr + '1';
 				end if;	
 			end if;
 		end if;
@@ -280,31 +322,19 @@ begin
 	begin
 		if rising_edge(clk) then
 			if (cross = '1') then
-				ob_e <= dir_dia after td;   			
+				ob_e <= dir_dia;   			
 			else
-				ob_e <= ram0_dout after td; 			
+				ob_e <= ram0_dout; 			
 			end if;
 		end if;
 	end process;
 	
-	dir_dia	<= ia_ze after td when rising_edge(clk);	
-																				   
-	ob_z 	<= ob_e after td when rising_edge(clk);
-	ob		<= ob_z after td when rising_edge(clk);
-	oa_e 	<= ram1_dout after td when rising_edge(clk);
+	dir_dia	<= ia_ze when rising_edge(clk);	
+
+	ob_z 	<= ob_e when rising_edge(clk);
+	ob		<= ob_z when rising_edge(clk);
+	oa_e 	<= ram1_dout when rising_edge(clk);
 	
-	-- RAMB enable delay line -- 
-	RAMV: process(clk) is
-	begin
-		if (clk'event and clk = '1') then
-			if (rstp = '1') then
-				del_o <= '0';
-			else
-				del_o <= ram_del(conv_integer(cnt_rd)) after td; -- dual port
-			end if;				
-			ram_del(conv_integer(cnt_rd)) <= din_en after td;
-		end if;	
-	end process;  
 	-- First RAMB delay line -- 
 	RAM0: process(clk) is
 	begin
@@ -313,11 +343,11 @@ begin
 				ram0_dout <= (others => '0');
 			else
 				if (del_o = '1') then
-					ram0_dout <= bram0(conv_integer(cnt_wr)) after td; -- dual port
+					ram0_dout <= bram0(conv_integer(cnt_wr)); -- dual port
 				end if;
 			end if;				
 			if (we = '1') then
-				bram0(conv_integer(cnt_wrcr(N_INV-1 downto 0))) <= ram0_din after td;
+				bram0(conv_integer(cnt_wrcr(N_INV-1 downto 0))) <= ram0_din;
 			end if;
 		end if;	
 	end process;
@@ -329,11 +359,11 @@ begin
 				ram1_dout <= (others => '0');
 			else
 				if (wes1 = '1') then
-					ram1_dout <= bram1(conv_integer(addrs1)) after td; -- dual port
+					ram1_dout <= bram1(conv_integer(addrs1)); -- dual port
 				end if;
 			end if;				
 			if (wes = '1') then
-				bram1(conv_integer(addrs)) <= ram1_din after td;
+				bram1(conv_integer(addrs)) <= ram1_din;
 			end if;
 		end if;	
 	end process;	

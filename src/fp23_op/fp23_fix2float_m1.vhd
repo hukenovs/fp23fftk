@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --
--- Title       : fp23_fix2float_m1
+-- Title       : fp23_fix2float_m1_
 -- Design      : fpfftk
 -- Author      : Kapitanov
 -- Company     : 
@@ -90,11 +90,9 @@ use ieee.std_logic_unsigned.all;
 
 library work;
 use work.fp_m1_pkg.fp23_data;
+use work.reduce_pack.nor_reduce;
 
 entity fp23_fix2float_m1 is
-	generic(
-		td			: time:=1ns	--! Time delay for simulation
-		);
 	port(
 		din			: in  std_logic_vector(15 downto 0);	--! Fixed input data					
 		ena			: in  std_logic;						--! Data enable 		
@@ -107,169 +105,120 @@ end fp23_fix2float_m1;
 
 architecture fp23_fix2float_m1 of fp23_fix2float_m1 is 
 
-component sp_addsub_m1 is
-	generic(	
-		N 		: integer
-	);
-	port(
-		data_a 	: in  std_logic_vector(N-1 downto 0);
-		data_b 	: in  std_logic_vector(N-1 downto 0);
-		data_c 	: out std_logic_vector(N-1 downto 0);
-		add_sub	: in  std_logic;  -- '0' - add, '1' - sub
-		cin     : in  std_logic:='0';
-		cout    : out std_logic;
-		clk    	: in  std_logic;
-		ce 		: in  std_logic:='1';	
-		aclr  	: in  std_logic:='1'
-	);
-end component;
-
-component sp_msb_decoder_m2 is
-	port(
-		din 	: in  std_logic_vector(31 downto 0);
-		din_en  : in  std_logic;
-		clk 	: in  std_logic;
-		reset 	: in  std_logic;
-		dout 	: out std_logic_vector(4 downto 0)
-	);
-end component;
-
-type std_logic_array_5x15 is array (4 downto 0) of std_logic_vector(14 downto 0);  
+constant FP32_EXP		: std_logic_vector(5 downto 0):="011111";
 
 signal true_form		: std_logic_vector(15 downto 0):=(others => '0');	
+signal norm				: std_logic_vector(15 downto 0);	
+signal frac           	: std_logic_vector(15 downto 0);	
 signal rstp				: std_logic;
+signal set_zero			: std_logic;
 
-signal sum_man		    : std_logic_vector(31 downto 0);
-signal sum_manz			: std_logic_array_5x15:=(others => (others => '0'));
+signal sum_man		    : std_logic_vector(15 downto 0);
 signal msb_num			: std_logic_vector(4 downto 0);
 signal msb_numn			: std_logic_vector(5 downto 0);
 
-constant exp_in			: std_logic_vector(5 downto 0):="011110";-- x = 32 - exp!	
-signal expc				: std_logic_vector(5 downto 0);
-signal expci			: std_logic_vector(5 downto 0);	
-signal norm_c           : std_logic_vector(14 downto 0);
-signal frac           	: std_logic_vector(15 downto 0);	
-signal exp_underflow	: std_logic;
-signal exp_underflow_n	: std_logic;
+signal msb_numt			: std_logic_vector(4 downto 0);
+signal msb_numz			: std_logic_vector(5 downto 0);
+signal expc				: std_logic_vector(5 downto 0); -- (E - 127) by (IEEE754)
 
-signal sign_c			: std_logic_vector(6 downto 0);
-signal valid			: std_logic_vector(7 downto 0);
+signal sign				: std_logic_vector(2 downto 0);
+signal valid			: std_logic_vector(4 downto 0);
+
 --signal dinz			: std_logic_vector(15 downto 0);
+signal dinz             : std_logic_vector(15 downto 0);
+signal dinh				: std_logic;
+signal dinx				: std_logic;
+
 
 begin
 
---dinz <= din after td when rising_edge(clk);
+-- x2S_COMPL: if (IS_CMPL = TRUE) generate
+pr_sgn: process(clk) is
+begin
+	if rising_edge(clk) then
+		dinz <= din - din(15);
+		dinh <= din(15);
+	end if;
+end process;   
 
--- -- UNCOMMENT TO CHANGE FLOATING MODE DATA: 1s OR 2s COMPLEMENTED!
---din_conq <= not din(15);
---din15z	<= din(15) when rising_edge(clk);
-
---add_din: sp_addsub_m1	-- +1 for negative data
---	generic map(N => 15) 
---	port map(
---	data_a 	=> din,
---	data_b 	=> x"0000",  
---	data_c 	=> din_buf, 		
---	add_sub	=> '1',--din_conq,--'0', 
---	cin     => '0',--din(15), 
-----	cout    => ,	 
---	clk    	=> clk, 
---	ce 		=> enable, --
---	aclr  	=> rstp 
---	);	
-	
 rstp <= not reset when rising_edge(clk);
 
 ---- make abs(data) by using XOR ----
 pr_abs: process(clk) is
 begin
 	if rising_edge(clk) then
-		if (ena = '1') then	
-			true_form(15) <= din(15) after td;	--din15z;	--din(15);
-			for ii in 0 to 14 loop
-				true_form(ii) <= din(ii) xor din(15) after td;	--din_buf(ii) xor din_buf(15);
-			end loop;
-		end if;	
+		true_form(15) <= dinz(15) or dinh;
+		for ii in 0 to 14 loop
+			true_form(ii) <= dinz(ii) xor (dinz(15) or dinh);
+		end loop;
 	end if;
 end process;	
 
-sum_man(31 downto 31) <= "0";
-sum_man(30 downto 16) <= true_form(14 downto 0);
-sum_man(15 downto 00) <= (others => '0');
+sum_man <= true_form(14 downto 0) & '0'  when rising_edge(clk);
 
 ---- find MSB (highest '1' position) ----
-MSB_SEEKER: sp_msb_decoder_m2 
-port map(
-	din 	=> sum_man(31 downto 0), 	
-	din_en  => '1', 					
-	clk 	=> clk, 					
-	reset 	=> rstp, 					
-	dout 	=> msb_num 			 						
-); 	
-
-msb_numn <= "0" & (not msb_num) after td when rising_edge(clk);
-
----- fraction delay ----
-pr_man: process(clk) begin
+pr_lead: process(clk) is
+begin 
 	if rising_edge(clk) then 
-		sum_manz(0) <= true_form(14 downto 0) after td; 
-		for ii in 0 to 3 loop			
-			sum_manz(ii+1) <= sum_manz(ii) after td;
-		end loop;
+		if    (true_form(14-00)='1') then msb_num <= "00001";--"00010";--"00001";
+		elsif (true_form(14-01)='1') then msb_num <= "00010";--"00011";--"00010";
+		elsif (true_form(14-02)='1') then msb_num <= "00011";--"00100";--"00011";
+		elsif (true_form(14-03)='1') then msb_num <= "00100";--"00101";--"00100";
+		elsif (true_form(14-04)='1') then msb_num <= "00101";--"00110";--"00101";
+		elsif (true_form(14-05)='1') then msb_num <= "00110";--"00111";--"00110";
+		elsif (true_form(14-06)='1') then msb_num <= "00111";--"01000";--"00111";
+		elsif (true_form(14-07)='1') then msb_num <= "01000";--"01001";--"01000";
+		elsif (true_form(14-08)='1') then msb_num <= "01001";--"01010";--"01001";
+		elsif (true_form(14-09)='1') then msb_num <= "01010";--"01011";--"01010";
+		elsif (true_form(14-10)='1') then msb_num <= "01011";--"01100";--"01011";
+		elsif (true_form(14-11)='1') then msb_num <= "01100";--"01101";--"01100";
+		elsif (true_form(14-12)='1') then msb_num <= "01101";--"01110";--"01101";
+		elsif (true_form(14-13)='1') then msb_num <= "01110";--"01111";--"01110";
+		elsif (true_form(14-14)='1') then msb_num <= "01111";--"10000";--"01111";	
+		else msb_num <= "00000";
+		end if;	
 	end if;
-end process; 
+end process;
+
+dinx <= dinz(15) xor dinh when rising_edge(clk);
+msb_numz(5) <= dinx when rising_edge(clk);
+msb_numz(4 downto 0) <= msb_num;
+msb_numt <= msb_num when rising_edge(clk);
 
 ---- barrel shifter by 0-15 ----
-norm_c <= STD_LOGIC_VECTOR(SHL(UNSIGNED(sum_manz(4)), UNSIGNED(msb_numn(3 downto 0)))) after td when rising_edge(clk);
-frac <= norm_c & '0' after td when rising_edge(clk);
+norm <= STD_LOGIC_VECTOR(SHL(UNSIGNED(sum_man), UNSIGNED(msb_num))) when rising_edge(clk);
+frac <= norm when rising_edge(clk);
 
----- find exponent (inv msb - 32) ---- 
-NORM_SUB: sp_addsub_m1
-	generic map(N => 6) 
-	port map(
-		data_a 	=> exp_in,
-		data_b 	=> msb_numn,  
-		data_c 	=> expc, 		
-		add_sub	=> '0', 
-		cin     => '1', 
-		cout    => exp_underflow,	 
-		clk    	=> clk, 
-		ce 		=> '1',--valid(5),
-		aclr  	=> rstp 
-	);					 
-exp_underflow_n <= not exp_underflow after td when rising_edge(clk); 
-
----- exponent increment (+1) ---- 
-EXP_INC: sp_addsub_m1
-	generic map(N => 6)
-	port map(
-		data_a 	=> expc, 
-		data_b 	=> "000000", 
-		data_c 	=> expci, 		
-		add_sub	=> '1', 
-		cin     => '1',--true_form(15), 
-		--cout    =>  ,	 
-		clk    	=> clk, 
-		ce 		=> '1',--valid(6),
-		aclr  	=> exp_underflow_n--set_zero 
-	); 																								
-
+---- Check zero value for fraction and exponent ----
+set_zero <= nor_reduce(msb_numz) when rising_edge(clk);
+---- find exponent (inv msb - x"2E") ---- 
+pr_sub: process(clk) is 
+begin
+	if rising_edge(clk) then
+		if (set_zero = '1') then
+			expc <= (others=>'0');
+		else
+			expc <= FP32_EXP - msb_numt;
+		end if;
+	end if;
+end process;	
+	
 ---- sign delay ----
-sign_c <= sign_c(5 downto 0) & true_form(15) after td when rising_edge(clk);--sign_c <= (others => '0');		   
-
+sign <= sign(sign'left-1 downto 0) & true_form(15) when rising_edge(clk);
+   
 ---- output data ---- 
 pr_out: process(clk) is 
 begin
 	if rising_edge(clk) then
 		if (rstp = '1') then
-			dout <= ("000000", '0', x"0000") after td;
-		elsif (valid(7) = '1') then
-			dout <= (expci, sign_c(6), frac) after td;
+			dout <= ("000000", '0', x"0000");
+		elsif (valid(valid'left) = '1') then
+			dout <= (expc, sign(sign'left), frac);
 		end if;
 	end if;
 end process; 
 
-valid <= valid(6 downto 0) & ena after td when rising_edge(clk);	
-vld <= valid(7) after td when rising_edge(clk);--valid(8); -- 8 clock corresponds actual data (+1 for mode 1)		
+valid <= valid(valid'left-1 downto 0) & ena when rising_edge(clk);	
+vld <= valid(valid'left) when rising_edge(clk);
 
 end fp23_fix2float_m1;

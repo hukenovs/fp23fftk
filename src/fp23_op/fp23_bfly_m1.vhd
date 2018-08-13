@@ -48,14 +48,12 @@ use ieee.std_logic_1164.all;
 use ieee.std_logic_unsigned.all;
 
 library work;
-use work.fp_m1_pkg.fp23_mult_m1;
-use work.fp_m1_pkg.fp23_addsub_m1;
 use work.fp_m1_pkg.fp23_complex;
 use work.fp_m1_pkg.fp23_data;
 
 entity fp23_bfly_m1 is
 	generic (
-		td			: time:=1ns	--! Time delay for simulation 		
+		XSERIES		: string:="7SERIES"	--! FPGA family: for 6/7 series: "7SERIES"; for ULTRASCALE: "ULTRA";
 	);	
 	port(
 		IA 			: in  fp23_complex; --! Even data in part
@@ -72,7 +70,7 @@ end fp23_bfly_m1;
 
 architecture fp23_bfly_m1 of fp23_bfly_m1 is
 
-type complex_fp23x18 is array(18 downto 0) of fp23_complex;
+type complex_fp23x14 is array(14 downto 0) of fp23_complex;
 
 signal sum 			: fp23_complex; 
 signal dif 			: fp23_complex;
@@ -83,16 +81,13 @@ signal im_x_im 		: fp23_data;
 signal re_x_im 		: fp23_data;
 signal im_x_re 		: fp23_data;
 
-signal sum_del 		: complex_fp23x18;
+signal sum_del 		: complex_fp23x14;
 signal dval_en		: std_logic_vector(2 downto 0);
 
 begin
  
 -------- SUM = A + B --------
-ADD_RE: fp23_addsub_m1 
-	generic map ( 
-		td  => td
-	)	
+ADD_RE: entity work.fp23_addsub_m1 	
 	port map(
 		aa 		=> ia.re, 
 		bb 		=> ib.re, 
@@ -104,10 +99,7 @@ ADD_RE: fp23_addsub_m1
 		clk 	=> clk 
 	);
 
-ADD_IM: fp23_addsub_m1 
-	generic map ( 
-		td  => td
-	)		
+ADD_IM: entity work.fp23_addsub_m1 	
 	port map(
 		aa 		=> ia.im, 
 		bb 		=> ib.im, 
@@ -119,10 +111,7 @@ ADD_IM: fp23_addsub_m1
 	);
 	
 -------- DIF = A - B --------
-SUB_RE: fp23_addsub_m1 
-	generic map ( 
-		td  => td
-	)	
+SUB_RE: entity work.fp23_addsub_m1 
 	port map(
 		aa 		=> ia.re, 
 		bb 		=> ib.re, 
@@ -133,10 +122,7 @@ SUB_RE: fp23_addsub_m1
 		clk 	=> clk 
 	);	
 
-SUB_IM: fp23_addsub_m1 
-	generic map ( 
-		td  => td
-	)	
+SUB_IM: entity work.fp23_addsub_m1
 	port map(
 		aa 		=> ia.im, 
 		bb 		=> ib.im, 
@@ -148,9 +134,9 @@ SUB_IM: fp23_addsub_m1
 	);		
 	
 -------- PROD = DIF * WW --------	
-RE_RE_MUL : fp23_mult_m1
+RE_RE_MUL : entity work.fp23_mult_m1
 	generic map ( 
-		td  => td
+		XSERIES => XSERIES
 	)	
 	port map (
 		aa 		=> dif.re,
@@ -162,9 +148,9 @@ RE_RE_MUL : fp23_mult_m1
 		clk 	=> clk
 	);	
 	
-IM_IM_MUL : fp23_mult_m1
+IM_IM_MUL : entity work.fp23_mult_m1
 	generic map ( 
-		td  => td
+		XSERIES => XSERIES
 	)	
 	port map (
 		aa 		=> dif.im,
@@ -175,9 +161,9 @@ IM_IM_MUL : fp23_mult_m1
 		clk 	=> clk
 	); 
 	
-RE_IM_MUL : fp23_mult_m1
+RE_IM_MUL : entity work.fp23_mult_m1
 	generic map ( 
-		td  => td
+		XSERIES => XSERIES
 	)	
 	port map (
 		aa 		=> dif.re,
@@ -188,9 +174,9 @@ RE_IM_MUL : fp23_mult_m1
 		clk 	=> clk
 	); 
 	
-IM_RE_MUL : fp23_mult_m1
+IM_RE_MUL : entity work.fp23_mult_m1
 	generic map ( 
-		td  => td
+		XSERIES => XSERIES
 	)	
 	port map (
 		aa 		=> dif.im,
@@ -202,10 +188,7 @@ IM_RE_MUL : fp23_mult_m1
 	);	
 	
 -------- OB = COMPL MULT --------
-OB_IM_ADD: fp23_addsub_m1 
-	generic map ( 
-		td  => td
-	)	
+OB_IM_ADD: entity work.fp23_addsub_m1
 	port map(
 		aa 		=> re_x_im, 		
 		bb 		=> im_x_re, 		
@@ -216,10 +199,7 @@ OB_IM_ADD: fp23_addsub_m1
 		clk 	=> clk 	
 	);	
 	
-OB_RE_SUB: fp23_addsub_m1 
-	generic map ( 
-		td  => td
-	)	
+OB_RE_SUB: entity work.fp23_addsub_m1 
 	port map(
 		aa 		=> re_x_re, 		
 		bb 		=> im_x_im, 		
@@ -235,11 +215,11 @@ OB_RE_SUB: fp23_addsub_m1
 pr_sumdel: process(clk) is
 begin
 	if rising_edge(clk) then
-		sum_del <= sum_del(17 downto 0) & sum after 1 ns;
+		sum_del <= sum_del(sum_del'left-1 downto 0) & sum after 1 ns;
 	end if;
 end process;
 
-OA		 <=	sum_del(18);
+OA		 <=	sum_del(sum_del'left);
 OB		 <=	sob;
 DOUT_VAL <= dval_en(2);	
 

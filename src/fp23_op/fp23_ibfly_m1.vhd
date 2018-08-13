@@ -48,15 +48,13 @@ use ieee.std_logic_1164.all;
 use ieee.std_logic_unsigned.all;
 
 library work;
-use work.fp_m1_pkg.fp23_mult_m1;
-use work.fp_m1_pkg.fp23_addsub_m1;
 use work.fp_m1_pkg.fp23_complex;
 use work.fp_m1_pkg.fp23_data;
 
 entity fp23_ibfly_m1 is
 	generic (
-		use_conj : boolean:=FALSE; --! Use conjugation for IFFT
-		td	: time:=1ns	--! Time delay for simulation
+		USE_CONJ 	: boolean:=FALSE; --! Use conjugation for IFFT
+		XSERIES		: string:="7SERIES"	--! FPGA family: for 6/7 series: "7SERIES"; for ULTRASCALE: "ULTRA";
 	);	
 	port(
 		IA 			: in  fp23_complex; --! Even data in part
@@ -73,7 +71,7 @@ end fp23_ibfly_m1;
 
 architecture fp23_ibfly_m1 of fp23_ibfly_m1 is
 
-type complex_fp23x18 is array(18 downto 0) of fp23_complex;
+type complex_fp23x14 is array(14 downto 0) of fp23_complex;
 
 signal sum 			: fp23_complex; 
 signal dif 			: fp23_complex;
@@ -84,17 +82,17 @@ signal im_x_im 		: fp23_data;
 signal re_x_im 		: fp23_data;
 signal im_x_re 		: fp23_data;
 
-signal ia_del 		: complex_fp23x18;
+signal ia_del 		: complex_fp23x14;
 signal dval_en		: std_logic_vector(2 downto 0);
 
 begin
  
-ia_del <= ia_del(17 downto 0) & IA after td when rising_edge(clk);
+ia_del <= ia_del(ia_del'left-1 downto 0) & IA when rising_edge(clk);
 
 -------- PROD = IB * WW --------	
-RE_RE_MUL : fp23_mult_m1
+RE_RE_MUL : entity work.fp23_mult_m1
 	generic map ( 
-		td  => td
+		XSERIES => XSERIES
 	)	
 	port map (
 		aa 		=> IB.re,
@@ -106,9 +104,9 @@ RE_RE_MUL : fp23_mult_m1
 		clk 	=> clk
 	); 
 	
-IM_IM_MUL : fp23_mult_m1
+IM_IM_MUL : entity work.fp23_mult_m1
 	generic map ( 
-		td  => td
+		XSERIES => XSERIES
 	)	
 	port map (
 		aa 		=> IB.im,
@@ -119,9 +117,9 @@ IM_IM_MUL : fp23_mult_m1
 		clk 	=> clk
 	);	
 	
-RE_IM_MUL : fp23_mult_m1
+RE_IM_MUL : entity work.fp23_mult_m1
 	generic map ( 
-		td  => td
+		XSERIES => XSERIES
 	)	
 	port map (
 		aa 		=> IB.re,
@@ -132,9 +130,9 @@ RE_IM_MUL : fp23_mult_m1
 		clk 	=> clk
 	);
 	
-IM_RE_MUL : fp23_mult_m1
+IM_RE_MUL : entity work.fp23_mult_m1
 	generic map ( 
-		td  => td
+		XSERIES => XSERIES
 	)	
 	port map (
 		aa 		=> IB.im,
@@ -148,123 +146,99 @@ IM_RE_MUL : fp23_mult_m1
 G_CONJ_FALSE: if use_conj = FALSE generate
 begin
 	-------- WW conjugation --------
-	OB_IM_SUB: fp23_addsub_m1 
-		generic map ( 
-			td  => td
-		)	
+	OB_IM_SUB: entity work.fp23_addsub_m1 
 		port map(
 			aa 		=> im_x_re, -- ?? 		
 			bb 		=> re_x_im, 		
 			cc 		=> bw.im,	
 			addsub	=> '1',
+			reset 	=> reset,
 			enable 	=> dval_en(0),	
-			reset  	=> reset,  	
 			clk 	=> clk 	
 		);	
 		
-	OB_RE_ADD: fp23_addsub_m1 
-		generic map ( 
-			td  => td
-		)	
+	OB_RE_ADD: entity work.fp23_addsub_m1 
 		port map(
 			aa 		=> re_x_re, 		
 			bb 		=> im_x_im, 		
 			cc 		=> bw.re, 	
 			addsub	=> '0',
+			reset 	=> reset,
 			enable 	=> dval_en(0), 	
-			valid 	=> dval_en(1),
-			reset  	=> reset,  	
+			valid 	=> dval_en(1), 	
 			clk 	=> clk 	
 		);	
 end generate; 	
 G_CONJ_TRUE: if use_conj = TRUE generate
 begin
 	-------- WW conjugation --------
-	OB_IM_ADD: fp23_addsub_m1 
-		generic map ( 
-			td  => td
-		)	
+	OB_IM_ADD: entity work.fp23_addsub_m1 
 		port map(
-			aa 		=> im_x_re, 		
-			bb 		=> re_x_im, 		
+			aa 		=> im_x_re,
+			bb 		=> re_x_im,			
 			cc 		=> bw.im,	
+			reset 	=> reset,
 			addsub	=> '0',
-			enable 	=> dval_en(0),	
-			reset  	=> reset,  	
+			enable 	=> dval_en(0),		
 			clk 	=> clk 	
 		);	
 		
-	OB_RE_SUB: fp23_addsub_m1 
-		generic map ( 
-			td  => td
-		)	
+	OB_RE_SUB: entity work.fp23_addsub_m1 
 		port map(
 			aa 		=> re_x_re, 		
 			bb 		=> im_x_im, 		
 			cc 		=> bw.re, 	
 			addsub	=> '1',
+			reset 	=> reset,
 			enable 	=> dval_en(0), 	
-			valid 	=> dval_en(1),
-			reset  	=> reset,  	
+			valid 	=> dval_en(1),	
 			clk 	=> clk 	
 		);	
 end generate; 
 
 -------- OA & OB --------	
-ADD_RE: fp23_addsub_m1 
-	generic map ( 
-		td  => td
-	)	
+ADD_RE: entity work.fp23_addsub_m1 	
 	port map(
-		aa 		=> ia_del(18).re, 		
+		aa 		=> ia_del(14).re, 		
 		bb 		=> bw.re, 		
 		cc 		=> sum.re, 
+		reset 	=> reset,
 		addsub	=> '0',		
 		enable 	=> dval_en(1), 	
-		reset  	=> reset,  	
 		clk 	=> clk 	
 	);
 	
-ADD_IM: fp23_addsub_m1 
-	generic map ( 
-		td  => td
-	)		
+ADD_IM: entity work.fp23_addsub_m1 		
 	port map(
-		aa 		=> ia_del(18).im, 		
+		aa 		=> ia_del(14).im, 		
 		bb 		=> bw.im, 		
 		cc 		=> sum.im,
+		reset 	=> reset,
 		addsub	=> '0',		
 		enable 	=> dval_en(1), 
-		valid	=> dval_en(2),
-		reset  	=> reset,  	
+		valid	=> dval_en(2), 	
 		clk 	=> clk 	
 	);	
 
-SUB_RE: fp23_addsub_m1 
-	generic map ( 
-		td  => td
-	)	
+SUB_RE: entity work.fp23_addsub_m1 	
 	port map(
-		aa 		=> ia_del(18).re, 		
+		aa 		=> ia_del(14).re, 		
 		bb 		=> bw.re, 		
 		cc 		=> dif.re, 
+		reset 	=> reset,
 		addsub	=> '1',		
-		enable 	=> dval_en(1), 	
-		reset  	=> reset,  	
+		enable 	=> dval_en(1), 		
 		clk 	=> clk 	
 	);
 	
-SUB_IM: fp23_addsub_m1 
-	generic map ( 
-		td  => td
-	)		
+SUB_IM: entity work.fp23_addsub_m1 		
 	port map(
-		aa 		=> ia_del(18).im, 		
+		aa 		=> ia_del(14).im, 		
 		bb 		=> bw.im, 		
 		cc 		=> dif.im,
+		reset 	=> reset,
 		addsub	=> '1',		
-		enable 	=> dval_en(1),
-		reset  	=> reset,  	
+		enable 	=> dval_en(1), 	
 		clk 	=> clk 	
 	);
 	

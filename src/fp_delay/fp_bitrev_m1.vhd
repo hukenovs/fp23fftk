@@ -47,6 +47,7 @@ use ieee.std_logic_unsigned.all;
 entity fp_bitrev_m1 is
 	generic (
 		td			: time:=1ns; --! Time delay for simulation
+		FWT			: boolean:=TRUE; --! Bitreverse mode: Even/Odd - "TRUE" or Half Pair - "FALSE". For FFT: "TRUE"		
 		PAIR		: boolean:=TRUE; --! Bitreverse mode: Even/Odd - "TRUE" or Half Pair - "FALSE". For FFT: "TRUE"		
 		STAGES		: integer:=4; --! FFT stages
 		Nwidth		: integer:=16 --! Data width		
@@ -88,37 +89,83 @@ signal cntz				: std_logic_vector(1 downto 0);
 signal dmux				: std_logic;
 signal valid			: std_logic;
 
+signal rstp				: std_logic;
+
 function bit_pair(Len: integer; Dat: std_logic_vector) return std_logic_vector is
 	variable Tmp : std_logic_vector(Len-1 downto 0);
 begin 
-	-- if (Len mod 2) = 0 then
-		-- Tmp(Len-1) :=  Dat(0);
-		-- for ii in 1 to Len-1 loop
-			-- Tmp(ii-1) := Dat(ii);
-		-- end loop;
-	-- else
-		Tmp(0) :=  Dat(Len-1);
-		for ii in 1 to Len-1 loop
-			Tmp(ii) := Dat(ii-1);
-		end loop;	
-	-- end if;
+	Tmp(Len-1) :=  Dat(0);
+	for ii in 1 to Len-1 loop
+		Tmp(ii-1) := Dat(ii);
+	end loop;
 	return Tmp; 
 end function; 
 
-begin
+function bit_pair2(Len: integer; Dat: std_logic_vector) return std_logic_vector is
+	variable Tmp : std_logic_vector(Len-1 downto 0);
+begin 
+	Tmp(0) :=  Dat(Len-1);
+	for ii in 1 to Len-1 loop
+		Tmp(ii) := Dat(ii-1);
+	end loop;
+	return Tmp; 
+end function; 
 
-xPAIR_TRUE: if (PAIR = TRUE) generate
-	addra <= bit_pair(STAGES, addrx);
-end generate;
-xPAIR_FALSE: if (PAIR = FALSE) generate
+signal cnt1st		: std_logic_vector(STAGES downto 0);	
+
+begin
+  	
+rstp <= not reset when rising_edge(clk);	
+	
+-- Data out and valid proc --	
+pr_cnt1: process(clk) is
+begin
+	if rising_edge(clk) then
+		if (rstp = '1') then
+			cnt1st <= (others => '0');		
+		else		
+			if (valid = '1') then
+				if (cnt1st(STAGES) = '0') then
+					cnt1st <= cnt1st + '1';
+				end if;
+			end if;	
+		end if;
+	end if;
+end process;	
+	
+xFWT_TRUE: if (FWT = TRUE) generate
 	addra <= addrx;
+	addrb <= bit_pair(STAGES, addrx);
 end generate;
+xFWT_FALSE: if (FWT = FALSE) generate
+--	xPAIR_FALSE: if (PAIR = FALSE) generate
+--		addra <= addrx;   
+--		addrb <= addrx;
+--	end generate;	
+	xPAIR_FALSE: if (PAIR = FALSE) generate
+		addra <= addrx;   
+		addrb <= addrx;
+	end generate;
+
+	xPAIR_TRUE: if (PAIR = TRUE) generate
+		addra <= bit_pair2(STAGES, addrx);
+		G_BR_ADDR: for ii in 0 to STAGES-1 generate	   
+			addrb(ii) <= cnt(STAGES-1-ii) after td when rising_edge(clk);
+		end generate;
+	end generate;	
+	
+end generate;	
+
+addrx <= cnt(STAGES-1 downto 0) after td when rising_edge(clk);
+--addrb <= cnt(STAGES-1 downto 0) after td when rising_edge(clk);
+
+-------------------------------------------------------------------------------
 
 -- Data out and valid proc --	
 pr_dout: process(clk) is
 begin
 	if rising_edge(clk) then
-		if (reset = '1') then
+		if (rstp = '1') then
 			do_dt <= (others => '0') after td;		
 		else
 			if (dmux = '0') then
@@ -129,7 +176,7 @@ begin
 		end if;
 	end if;
 end process;	
-do_vl <= valid after td when rising_edge(clk);
+do_vl <= valid and cnt1st(STAGES) after td when rising_edge(clk);
 		
 -- Common proc --	
 ram_di0 <= di_dt when rising_edge(clk);
@@ -138,7 +185,7 @@ ram_di1 <= di_dt when rising_edge(clk);
 pr_cnt: process(clk) is
 begin
 	if rising_edge(clk) then
-		if (reset = '1') then
+		if (rstp = '1') then
 			cnt <= (others => '0') after td;		
 		else
 			if (di_en = '1') then
@@ -152,7 +199,7 @@ cntz <= cntz(0) & cnt(STAGES) after td when rising_edge(clk);
 pr_we: process(clk) is
 begin
 	if rising_edge(clk) then
-		if (reset = '1') then
+		if (rstp = '1') then
 			we0 <= '0' after td;
 			we1 <= '0' after td;	
 		else
@@ -169,10 +216,12 @@ rd1 <= we0;
 vl0 <= we1 after td when rising_edge(clk);
 vl1 <= we0 after td when rising_edge(clk);
 
-addrx <= cnt(STAGES-1 downto 0) after td when rising_edge(clk);
-G_BR_ADDR: for ii in 0 to STAGES-1 generate
-	addrb(ii) <= cnt(STAGES-1-ii) after td when rising_edge(clk);
-end generate;
+--addrx <= cnt(STAGES-1 downto 0) after td when rising_edge(clk);
+----addrb <= cnt(STAGES-1 downto 0) after td when rising_edge(clk);
+--addrb <= bit_pair(STAGES, addrx);
+--G_BR_ADDR: for ii in 0 to STAGES-1 generate	   
+----	addrb(ii) <= cnt(STAGES-1-ii) after td when rising_edge(clk);
+--end generate;
 
 -- RAMB generator --	
 G_LOW_STAGE: if (STAGES < 9) generate	
@@ -227,7 +276,7 @@ begin
 	begin
 		if (clk'event and clk = '1') then
 			ram_do0 <= dout0 after td;
-			if (reset = '1') then
+			if (rstp = '1') then 
 				dout0 <= (others => '0');
 			else
 				if (rd0 = '1') then
@@ -244,7 +293,7 @@ begin
 	begin
 		if (clk'event and clk = '1') then
 			ram_do1 <= dout1 after td;
-			if (reset = '1') then
+			if (rstp = '1') then
 				dout1 <= (others => '0');
 			else
 				if (rd1 = '1') then

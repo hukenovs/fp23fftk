@@ -56,6 +56,12 @@
 --	Version 1.8  07.04.2016
 --					> Add constant for negative data converter. 
 --
+--	Version 1.9  22.01.2018
+--					> Change exp shift logic. 
+--
+--	Version 1.10 23.01.2018
+--					> Overflow and underflow logic has been improved. 
+--
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 --
@@ -92,11 +98,9 @@ use ieee.std_logic_unsigned.all;
 
 library work;
 use work.fp_m1_pkg.fp23_data;
-use work.reduce_pack.and_reduce;
 
 entity fp23_float2fix_m1 is
 	generic(
-		td			: time:=1ns; --! Time delay for simulation
 		DW			: integer:=16 --! Output data width
 	);
 	port(
@@ -113,24 +117,7 @@ end fp23_float2fix_m1;
 
 architecture fp23_float2fix_m1 of fp23_float2fix_m1 is 
 
-component sp_addsub_m1 is
-	generic(	
-		N 		: integer
-	);
-	port(
-		data_a 	: in  std_logic_vector(N-1 downto 0);
-		data_b 	: in  std_logic_vector(N-1 downto 0);
-		data_c 	: out std_logic_vector(N-1 downto 0);
-		add_sub	: in  std_logic;  -- '0' - add, '1' - sub
-		cin     : in  std_logic:='0';
-		cout    : out std_logic;
-		clk    	: in  std_logic;
-		ce 		: in  std_logic:='1';	
-		aclr  	: in  std_logic:='1'
-	);
-end component;
-
-signal exp_dif			: std_logic_vector(5 downto 0);
+signal exp_dif			: std_logic_vector(4 downto 0);
 signal exp_dift			: std_logic_vector(5 downto 0);
 signal mant				: std_logic_vector(DW downto 0);
 signal rstp				: std_logic;
@@ -144,125 +131,116 @@ signal shift			: std_logic_vector(5 downto 0);
 signal norm_man			: std_logic_vector(DW-1 downto 0);
 
 signal overflow_i		: std_logic;
-signal exp_zero			: std_logic;
 signal exp_null			: std_logic; 
 signal exp_nullz		: std_logic; 
 signal exp_nullt		: std_logic; 
 
-signal nexp_dif			: std_logic_vector(5 downto 0);	  --
-
-signal exp_hi			: std_logic;
-signal exp_lo			: std_logic;
-
-constant dconst			: std_logic_vector(DW-1 downto 0):=x"7FFF";
+signal exp_cmp			: std_logic;
+signal exp_ovr			: std_logic;
 
 begin	
   
-rstp <= not reset after td when rising_edge(clk); 
-shift <= scale after td when rising_edge(clk);	
+rstp <= not reset when rising_edge(clk); 
+shift <= scale when rising_edge(clk);	
 
--- (EXP(A) - SCALE)
-EXP_DIFF: sp_addsub_m1
-	generic map(N => 6) 
-	port map(
-		data_a 	=> din.exp, 
-		data_b 	=> shift, 
-		data_c 	=> exp_dift, 		
-		add_sub	=> '0', 				
-		cin     => '1',--0 	
-		cout    => exp_zero,	
-		clk    	=> clk, 				
-		ce 		=> ena, 						
-		aclr  	=> rstp 				
-	);	
+---- exp difference ----	
+pr_exp: process(clk) is
+begin
+	if rising_edge(clk) then
+		exp_dift <= din.exp - shift;
+	end if;
+end process;	
 
-exp_dif <= exp_dift after td when rising_edge(clk);	
-		
-exp_null <= not exp_zero after td when rising_edge(clk);   	
-exp_nullz <= exp_null after td when rising_edge(clk) and valid(0) = '1';   	
-exp_nullt <= exp_nullz after td when rising_edge(clk);
+pr_cmp: process(clk) is
+begin
+	if rising_edge(clk) then
+		if (din.exp < shift) then
+			exp_cmp <= '1';
+		else
+			exp_cmp <= '0';
+		end if;
+	end if;
+end process;
+
+exp_null <= exp_cmp when rising_edge(clk);   	
+exp_nullz <= exp_null when rising_edge(clk); 
+
+pr_ovf: process(clk) is
+begin
+	if rising_edge(clk) then
+		if ("001110" < exp_dift) then
+			exp_ovr <= '1';
+		else
+			exp_ovr <= '0';
+		end if;
+	end if;
+end process;
+
+exp_nullt <= exp_ovr when rising_edge(clk);   	
+
 
 -- implied for mantissa and find sign
 pr_impl: process(clk) is
 begin 
 	if rising_edge(clk) then
-		if (rstp = '1') then
-			implied <= '0' after td;
-		else
-			if (din.exp = "000000") then
-				implied	<='0' after td;
-			else 
-				implied	<='1' after td;
-			end if;
-		end if;	
+		if (din.exp = x"00") then
+			implied	<='0';
+		else 
+			implied	<='1';
+		end if;
 	end if;
 end process;	
 
 -- find fraction --
-frac <= din.man after td when rising_edge(clk);
+frac <= din.man when rising_edge(clk);
 pr_man: process(clk) is
 begin 
 	if rising_edge(clk) then
-		if (rstp = '1') then
-			mant <= (others => '0') after td;	
-		else
-			if (valid(0) = '1') then
-				mant <=	implied & frac after td;
-			end if;
-		end if;
+		mant <=	implied & frac;
 	end if;
 end process;
-sign_z <= sign_z(1 downto 0) & din.sig after td when rising_edge(clk);
+sign_z <= sign_z(sign_z'left-1 downto 0) & din.sig when rising_edge(clk);
 
--- barrel shifter --
---man_shift <= "000" & x"000" & mant;
---norm_man <= man_shift(31-conv_integer(exp_dif(3 downto 0)) downto 16-conv_integer(exp_dif(3 downto 0))) after td when rising_edge(clk); 	
-nexp_dif <= not exp_dift after 1 ns when rising_edge(clk);
-norm_man <= STD_LOGIC_VECTOR(SHR(UNSIGNED(mant(DW downto 1)), UNSIGNED(nexp_dif(3 downto 0)))) after td when rising_edge(clk);
+-- barrel shifter --	
+exp_dif <= not exp_dift(4 downto 0) when rising_edge(clk);
+norm_man <= STD_LOGIC_VECTOR(SHR(UNSIGNED(mant(DW downto 1)), UNSIGNED(exp_dif(3 downto 0)))) when rising_edge(clk);
 
 -- data valid and data out --
 pr_out: process(clk) is
 begin
 	if rising_edge(clk) then
 		if (rstp = '1') then 
-			dout <= (others => '0') after td;
-		elsif (valid(2) = '1') then	
-			if (exp_nullt = '1') then
-				dout <= (others => '0') after td;
-			elsif (overflow_i = '1') then
-				for ii in 0 to DW-1 loop
-					dout(ii) <=	dconst(ii) xor sign_z(2) after td;	 
-				end loop;
---				dout(DW-1) <= '0' after td;
---				dout(DW-2 downto 0) <= (others => '1') after td;					
-				--dout <= ((DW-1) => '0', others => '1') after td;			
+			dout <= (others => '0');
+		else			
+			if (exp_nullz = '1') then
+				dout <= (others => '0');
 			else
-				for ii in 0 to DW-1 loop
-					dout(ii) <=	norm_man(ii) xor sign_z(2) after td;	 
-				end loop;
-			end if;	
+				if (exp_nullt = '1') then
+					dout(DW-1) <= sign_z(2);
+					for ii in 0 to DW-2 loop
+						dout(ii) <=	not sign_z(2);	 
+					end loop;		
+				else
+					if (sign_z(2) = '1') then
+						dout <=	(not norm_man) + 1;
+					else
+						dout <=	norm_man;
+					end if;				
+				end if;					
+			end if;
 		end if;
 	end if;	
 end process;
 
-valid <= valid(2 downto 0) & ena after td when rising_edge(clk);	
-vld <= valid(3);	
-
--- overflow --
-exp_hi <= exp_dift(5) or exp_dift(4) after td when rising_edge(clk);
-exp_lo <= and_reduce(exp_dift(3 downto 0)) after td when rising_edge(clk);
+valid <= valid(valid'left-1 downto 0) & ena when rising_edge(clk);	
+vld <= valid(valid'left-1) when rising_edge(clk);	
 
 pr_ovr: process(clk) is
 begin 
 	if rising_edge(clk) then
-		if (exp_nullz = '1') then
-			overflow_i <= '0' after td;
-		else
-			overflow_i <= (exp_hi or exp_lo) after td;
-		end if;
+		overflow_i <= exp_nullt and not exp_nullz;--(exp_hi or exp_lo);
 	end if;
 end process;
---overflow_i <= or_reduce(exp_dif(5 downto 3)) after td when rising_edge(clk);
-overflow <= overflow_i after td when rising_edge(clk); 
+overflow <= overflow_i when rising_edge(clk); 
 
 end fp23_float2fix_m1;
