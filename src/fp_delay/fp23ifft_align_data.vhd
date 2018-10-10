@@ -5,16 +5,16 @@
 -- Author      : Kapitanov
 -- Company     :
 --
--- Description : fp23ifft_align_delays
+-- Description : fp23ifft_align_data
 --
 -- Version 1.0 : Delay correction for TWIDDLE factor and BFLYes 
---																   
+--
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 --
 --	The MIT License (MIT)
---	Copyright (c) 2016 Kapitanov Alexander 													 
---		                                          				 
+--	Copyright (c) 2016 Kapitanov Alexander
+--
 -- Permission is hereby granted, free of charge, to any person obtaining a copy 
 -- of this software and associated documentation files (the "Software"), 
 -- to deal in the Software without restriction, including without limitation 
@@ -33,7 +33,7 @@
 -- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
 -- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS 
 -- IN THE SOFTWARE.
--- 	                                                 
+--
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 library ieee;
@@ -44,11 +44,11 @@ use ieee.std_logic_arith.all;
 library work;
 use work.fp_m1_pkg.fp23_complex;
 
-entity fp23ifft_align_delays is 
+entity fp23ifft_align_data is 
 	generic( 
 		NFFT			: integer:=16;	--! FFT lenght
 		STAGE 			: integer:=0;	--! FFT stage		
-		USE_SCALE		: boolean:=true --! Use Taylor for twiddles			
+		USE_SCALE		: boolean:=true --! Use Taylor for twiddles
 	);
 	port(	
 		clk				: in  std_logic; --! Clock
@@ -63,34 +63,17 @@ entity fp23ifft_align_delays is
 		bfly_en			: in  std_logic;
 		bfly_enx		: out std_logic
 	);
-end fp23ifft_align_delays;
+end fp23ifft_align_data;
 
-architecture fp23ifft_align_delays of fp23ifft_align_delays is   		  
+architecture fp23ifft_align_data of fp23ifft_align_data is
 
 begin 
 
-ZERO_WW: if (0 = STAGE) generate
+ZERO_WW: if (STAGE < 2) generate
 begin
-	iax <= ia;   	
-	ibx <= ib;   	
+	iax <= ia;
+	ibx <= ib;
 	bfly_enx <= bfly_en;
-end generate;	
-
-ONE_WW: if (1 = STAGE) generate
-	type complex_fp23xM is array (6 downto 0) of fp23_complex;
-	signal iaz 			: complex_fp23xM;
-	signal ibz 			: complex_fp23xM;
-	signal ww_ena 		: std_logic_vector(6 downto 0); 	
-begin 
-	
-	ww_ena <= ww_ena(5 downto 0) & bfly_en when rising_edge(clk);	
-
-	iaz <= iaz(5 downto 0) & ia when rising_edge(clk);		
-	ibz <= ibz(5 downto 0) & ib when rising_edge(clk);		
-	
-	iax <= iaz(6);   	
-	ibx <= ibz(6);   	
-	bfly_enx <= ww_ena(6);
 end generate;	
 
 LOW_WW: if ((12 > STAGE) and (1 < STAGE)) generate
@@ -109,7 +92,6 @@ begin
 	bfly_enx <= ww_ena(8);
 end generate;
 
---MEDIUM STAGES: Z = 3 (from twiddle) + 11 (to mult) = 14 (adder latency)
 MED_WW: if (11 < STAGE) generate
 	X_TLR_NO: if (USE_SCALE = TRUE) generate
 		type complex_fp23xM is array (8 downto 0) of fp23_complex;
@@ -144,4 +126,4 @@ MED_WW: if (11 < STAGE) generate
 	end generate;			
 end generate;	
 
-end fp23ifft_align_delays; 
+end fp23ifft_align_data; 

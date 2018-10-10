@@ -11,8 +11,8 @@
 -------------------------------------------------------------------------------
 --
 --	The MIT License (MIT)
---	Copyright (c) 2016 Kapitanov Alexander 													 
---		                                          				 
+--	Copyright (c) 2016 Kapitanov Alexander
+--
 -- Permission is hereby granted, free of charge, to any person obtaining a copy 
 -- of this software and associated documentation files (the "Software"), 
 -- to deal in the Software without restriction, including without limitation 
@@ -31,7 +31,7 @@
 -- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
 -- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS 
 -- IN THE SOFTWARE.
--- 	                                                 
+--
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 library ieee;
@@ -46,8 +46,8 @@ use std.textio.all;
 use work.fp_m1_pkg.all;
 
 entity fp_main_test is 
-	generic(													    
-		NFFT			: integer:=10;			
+	generic(
+		NFFT			: integer:=10;
 		XSERIES			: string:="7SERIES"
 		);
 end fp_main_test;
@@ -57,23 +57,24 @@ architecture fp_main_test of fp_main_test is
 
 -- ******************************** --
 -- CHANGE STAGES TO EDIT FFT TEST!! --
-constant	SCALE			: std_logic_vector(5 downto 0):="011010"; 
-constant	USE_FLY_FFT		: std_logic:='1';	
-constant	USE_FLY_IFFT	: std_logic:='1';	
-constant	USE_SCALE		: boolean:=FALSE; -- TRUE - MAX RAMBs, FALSE - TAYLOR ALGO	
+constant SCALE				: std_logic_vector(5 downto 0):="011010"; 
+constant USE_FLY_FFT		: std_logic:='1';	
+constant USE_FLY_IFFT		: std_logic:='1';	
+constant USE_SCALE			: boolean:=FALSE; -- TRUE - MAX RAMBs, FALSE - TAYLOR ALGO	
+constant USE_CONJ			: boolean:=FALSE; -- TRUE - Use conjugation in IFFT
+constant DT_MUX         	: std_logic_vector(1 downto 0):="11";
 -- ******************************** -- 
 
-constant Nst2x			: integer:=2**(NFFT);
-signal clk				: std_logic:='0';
-signal reset			: std_logic:='0';
-		
-signal din_re			: std_logic_vector(15 downto 0):=x"0000"; 
-signal din_im			: std_logic_vector(15 downto 0):=x"0000"; 
-signal din_en			: std_logic:='0';
+signal clk					: std_logic:='0';
+signal reset				: std_logic:='0';
 
-signal dout0			: std_logic_vector(15 downto 0);
-signal dout1 			: std_logic_vector(15 downto 0);
-signal dval				: std_logic;
+signal din_re				: std_logic_vector(15 downto 0):=x"0000"; 
+signal din_im				: std_logic_vector(15 downto 0):=x"0000"; 
+signal din_en				: std_logic:='0';
+
+signal dout0				: std_logic_vector(15 downto 0);
+signal dout1 				: std_logic_vector(15 downto 0);
+signal dval					: std_logic;
 
 begin
 	
@@ -97,7 +98,7 @@ begin
 		din_im <= (others => '0');
 	else	
 		wait for 100 ns;
-		lp_inf: for jj in 0 to 31 loop	   
+		lp_inf: for jj in 0 to 7 loop	   
 			file_close( file_dt_re);
 			file_close( file_dt_im);				
 			file_open( file_dt_re, "../../../../../math/din_re.dat", read_mode );
@@ -106,15 +107,9 @@ begin
 			
 			wait for 50 ns;
 			
-			lp_32k: for ii in 0 to Nst2x-1 loop
+			while not endfile(file_dt_re) loop
 				wait until rising_edge(clk);
 
-				-- if (ii < 5) then
-					-- readline( file_dt_re, l );
-					-- readline( file_dt_im, l );
-					-- count :=0;
-					-- din_en <= '0'; 
-				-- else
 					
 					readline( file_dt_re, l );
 					read( l, lt1 );	
@@ -130,18 +125,28 @@ begin
 			wait until rising_edge(clk);
 			din_en <= '0' after 1 ns;
 			din_re <= ( others => '0') after 1 ns;
-			din_im <= ( others => '0') after 1 ns;				
+			din_im <= ( others => '0') after 1 ns;
+		
+			for nn in 0 to 63 loop
+				wait until rising_edge(clk);
+			end loop;			
 		
 			wait for 100 ns;
 		end loop;
+		
+		din_en <= '0' after 1 ns;
+		din_re <= ( others => '1') after 1 ns;
+		din_im <= ( others => '1') after 1 ns;			
+		
+		wait;	
 	end if;
 end process;  
 --------------------------------------------------------------------------------
 write_dout: process(clk) is    -- write file_io.out (++ done goes to '1')
-	file log 					: TEXT open WRITE_MODE is "../../../../../math/dat_out.dat";
+	file log 					: TEXT open WRITE_MODE is "../../../../../math/data_out.dat";
 	variable str 				: LINE;
 	variable spc 				: string(1 to 4) := (others => ' ');
-	variable cnt 				: integer range -1 to 1600000000;	
+	variable cnt 				: integer;	
 begin
 	if rising_edge(clk) then
 		if reset = '0' then
@@ -160,32 +165,31 @@ begin
 	end if;
 end process; 		
 --------------------------------------------------------------------------------
-uut: entity work.fp23_logic_m2
+uut: entity work.fp23_logic
 	generic map (
-		USE_CONJ	=> FALSE,			
-		USE_PAIR	=> TRUE,		
-		XSERIES		=> XSERIES,			
-		NFFT		=> NFFT,								
-		USE_SCALE	=> USE_SCALE				
+		USE_CONJ	=> USE_CONJ,
+		USE_PAIR	=> TRUE,
+		USE_FWT		=> FALSE,
+		XSERIES		=> "ULTRA",
+		NFFT		=> NFFT
 	)
 	port map ( 
+		use_fly		=> USE_FLY_FFT,
+		use_ifly	=> USE_FLY_IFFT,
+		
 		reset		=> reset,	
 		clk			=> clk,	
  
-        use_fly	    => USE_FLY_FFT,
-        use_ifly    => USE_FLY_IFFT,
-
-		dt_rev		=> '0',
-		dt_mux		=> "11",
-		dt_fft		=> '0',
+		dt_rev		=> '1',
+		dt_mux		=> dt_mux,
 		fpscale		=> SCALE, 
 
 		din_re		=> din_re,
 		din_im		=> din_im,
 		din_en		=> din_en,	
 	
-		d_re		=> dout0, 		
-		d_im		=> dout1, 		
+		d_re		=> dout0,
+		d_im		=> dout1,
 		d_vl		=> dval
 	);
 	

@@ -218,6 +218,7 @@ begin
 	din_imz3 <= din_imz2 when rising_edge(clk);		
 
 	dout_val <= (enbzz or enazz) when rising_edge(clk);	
+	-- dout_val <= (enbz or enaz) when rising_edge(clk);	
 
 end generate;
 

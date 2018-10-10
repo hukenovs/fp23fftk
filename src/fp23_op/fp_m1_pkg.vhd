@@ -95,10 +95,6 @@ package	fp_m1_pkg is
 	function find_sin(xx : integer) return std_logic_array_Kx16;
 	function find_cos(xx : integer) return std_logic_array_Kx16; 
 
-	-- constant sin_rom : std_logic_array_Kx16:= find_sin(xNFFT);	
-	-- constant cos_rom : std_logic_array_Kx16:= find_cos(xNFFT);	
-	-- constant ww32x1K : std_logic_array_Kx32:= merge_vec(xNFFT, sin_rom, cos_rom);	
-	
 	type int16_complex is record
 		re : std_logic_vector(15 downto 00);
 		im : std_logic_vector(15 downto 00);
@@ -109,23 +105,12 @@ package	fp_m1_pkg is
 		sig 	: std_logic;
 		man 	: std_logic_vector(15 downto 0);
 	end record;	
-	
-	type fp25_data is record
-		exp 	: std_logic_vector(7 downto 0); 
-		sig 	: std_logic;
-		man 	: std_logic_vector(15 downto 0);
-	end record;		
-	
+
 	type fp23_complex is record
 		re : fp23_data;
 		im : fp23_data;
 	end record;
-	
-	type fp25_complex is record
-		re : fp25_data;
-		im : fp25_data;
-	end record;	
-	
+
 	procedure find_fp(
 		data_i	: in std_logic_vector(15 downto 0);
 		data_o	: out std_logic_vector(22 downto 0)

@@ -184,8 +184,7 @@ fp_cnt <= cnt_rom(conv_integer(int_cnt)) when rising_edge(clk);
 -------------------------------------------------------------------------------
 
 CALC_314_MULT : entity work.fp23_mult_m2
-	generic map ( 
-		XSERIES => XSERIES)
+	generic map ( XSERIES => XSERIES )
 	port map(
 		aa 		=> fp_cnt,
 		bb 		=> fp23_pi,
@@ -197,8 +196,7 @@ CALC_314_MULT : entity work.fp23_mult_m2
 	);	
 	
 CALC_PI_SIN: entity work.fp23_mult_m2 
-	generic map ( 
-		XSERIES => XSERIES)
+	generic map ( XSERIES => XSERIES )
 	port map(
 		aa 		=> rom_ww.im,--del_m_sin, 
 		bb 		=> pi_mult, 

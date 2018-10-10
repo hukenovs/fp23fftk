@@ -54,7 +54,7 @@ entity fp_Ndelay_in_m1 is
 		din_re		: in  std_logic_vector(Nwidth-1 downto 0); --! Data Real
 		din_im		: in  std_logic_vector(Nwidth-1 downto 0); --! Data Imag
 		din_en		: in  std_logic; --! Data enable
-										
+
 		clk  		: in  std_logic; --! Clock
 		reset 		: in  std_logic; --! Reset		
 		

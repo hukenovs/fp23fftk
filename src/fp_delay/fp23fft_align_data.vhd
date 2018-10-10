@@ -5,7 +5,7 @@
 -- Author      : Kapitanov
 -- Company     :
 --
--- Description : fp23fft_align_delays
+-- Description : fp23fft_align_data
 --
 -- Version 1.0 : Delay correction for TWIDDLE factor and BFLYes 
 --																   
@@ -44,7 +44,7 @@ use ieee.std_logic_arith.all;
 library work;
 use work.fp_m1_pkg.fp23_complex;
 
-entity fp23fft_align_delays is 
+entity fp23fft_align_data is 
 	generic( 
 		NFFT			: integer:=16;	--! FFT lenght
 		STAGE 			: integer:=0;	--! FFT stage		
@@ -64,27 +64,15 @@ entity fp23fft_align_delays is
 		bfly_enx		: out std_logic;
 		coe_en			: out std_logic
 	);
-end fp23fft_align_delays;
+end fp23fft_align_data;
 
-architecture fp23fft_align_delays of fp23fft_align_delays is   		  
+architecture fp23fft_align_data of fp23fft_align_data is   		  
 
 begin 
 
-ZERO_WW: if (NFFT-1 = STAGE) generate 
+ZERO_WW: if (NFFT-3 < STAGE) generate 
 begin	
-	coe_en <= bfly_en;
-	iax <= ia;   	
-	ibx <= ib;   	
-	bfly_enx <= bfly_en;
-end generate;
-
--- LOW STAGES: Z = 1 (from twiddle) + 9 (from int2fp) + 4 (to mult) = 14 (adder latency)
-LOW_WW: if (NFFT-1 > STAGE) and (NFFT-3 < STAGE) generate
-	signal ww_ena : std_logic_vector(1 downto 0); 
-begin
-	ww_ena <= ww_ena(ww_ena'left-1 downto 0) & bfly_en when rising_edge(clk);	
-	coe_en <= ww_ena(ww_ena'left) when rising_edge(clk);	
-	
+	coe_en <= '0';
 	iax <= ia;   	
 	ibx <= ib;   	
 	bfly_enx <= bfly_en;
@@ -134,4 +122,4 @@ LONG_WW: if (NFFT-13 >= STAGE) generate
 	end generate;		
 end generate;
 
-end fp23fft_align_delays; 
+end fp23fft_align_data; 
