@@ -58,8 +58,8 @@
 -------------------------------------------------------------------------------
 --
 --	The MIT License (MIT)
---	Copyright (c) 2016 Kapitanov Alexander 													 
---		                                          				 
+--	Copyright (c) 2016 Kapitanov Alexander
+--
 -- Permission is hereby granted, free of charge, to any person obtaining a copy 
 -- of this software and associated documentation files (the "Software"), 
 -- to deal in the Software without restriction, including without limitation 
@@ -78,7 +78,7 @@
 -- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
 -- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS 
 -- IN THE SOFTWARE.
---                                        
+--
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 library ieee;
@@ -92,13 +92,13 @@ use work.fp_m1_pkg.fp23_data;
 entity fp23_addsub_m2 is
 	port(
 		aa 		: in  fp23_data;	--! Summand/Minuend A   
-		bb 		: in  fp23_data;	--! Summand/Substrahend B     
-		cc 		: out fp23_data;	--! Sum/Dif C        
+		bb 		: in  fp23_data;	--! Summand/Substrahend B
+		cc 		: out fp23_data;	--! Sum/Dif C
 		addsub	: in  std_logic;	--! '0' - Add, '1' - Sub
 		reset	: in  std_logic;	--! '0' - Reset
 		enable 	: in  std_logic;	--! Input data enable
-		valid	: out std_logic;	--! Output data valid          
-		clk 	: in  std_logic		--! Clock	         
+		valid	: out std_logic;	--! Output data valid
+		clk 	: in  std_logic		--! Clock
 	);
 end fp23_addsub_m2;
 
@@ -155,16 +155,12 @@ signal man_azz			: std_logic_vector(16 downto 0);
 signal sum_mt			: std_logic_vector(17 downto 0);
 signal addsign			: std_logic;
 
-signal rstp				: std_logic;
-
 signal exp_a0			: std_logic;
 signal exp_b0			: std_logic;
 signal exp_ab			: std_logic;
 signal exp_zz			: std_logic_vector(6 downto 0);
 
 begin	
-	
-rstp <= not reset when rising_edge(clk); 	
 
 -- add or sub operation --
 aa_z <= aa when rising_edge(clk);
@@ -201,7 +197,7 @@ begin
 	end if;
 end process; 
 
--- data switch multiplexer --			
+-- data switch multiplexer --
 pr_mux: process(clk) is
 begin
 	if rising_edge(clk) then
@@ -213,8 +209,8 @@ begin
 			muxb <= bb_z;
 		end if;
 		muxaz <= muxa; 
-		muxbz <= muxb.man;			
-	end if;							   
+		muxbz <= muxb.man;
+	end if;
 end process;
 
 -- implied '1' for fraction --
@@ -227,7 +223,7 @@ begin
 			implied_a <= '1';
 		end if;
 		
-		if (muxb.exp = "000000") then	
+		if (muxb.exp = "000000") then
 			implied_b <= '0';
 		else
 			implied_b <= '1';
@@ -301,7 +297,7 @@ begin
 		elsif (msb_dec(15-13)='1') then msb_num <= "01101";-- "10010";
 		elsif (msb_dec(15-14)='1') then msb_num <= "01110";-- "10001";
 		elsif (msb_dec(15-15)='1') then msb_num <= "01111";-- "10000";
-		else msb_num <= "11111";                    
+		else msb_num <= "11111";
 		end if;	
 	end if;
 end process;	
@@ -317,26 +313,10 @@ begin
 end process;
 
 ----------------------------------------
-
--- second barrel shifter --
---norm_c <= sum_manx(31-conv_integer(msb_numn(3 downto 0)) downto 16-conv_integer(msb_numn(3 downto 0))) when rising_edge(clk); 
+-- second barrel shifter -- 
 norm_c <= STD_LOGIC_VECTOR(SHL(UNSIGNED(sum_mant), UNSIGNED(msb_num(4 downto 0)))) when rising_edge(clk);	
 frac <= norm_c when rising_edge(clk);
-
--- pr_set: process(clk) is
--- begin
-	-- if rising_edge(clk) then 
-		-- if (expaz(3) <= msb_num) then
-			-- -- set_zero <= '1';
-		-- -- else
-			-- -- set_zero <= '0';
-			-- set_zero <= '1';
-		-- else
-			-- set_zero <= '0';			
-		-- end if;
-	-- end if;
--- end process;				 
-  
+ 
 pr_set0: process(clk) is
 begin
 	if rising_edge(clk) then 
@@ -378,25 +358,19 @@ begin
 		expaz(0) <= muxaz.exp;
 		for ii in 0 to 3 loop
 			expaz(ii+1) <= expaz(ii);
-		end loop;		
+		end loop;
 	end if;
-end process;	
+end process;
 
 sign_c <= sign_c(sign_c'left-1 downto 0) & muxaz.sig when rising_edge(clk);
--- data out and result --	
---cc <= (expc, sign_c(sign_c'left), frac) when rising_edge(clk);
 
 pr_dout: process(clk) is
 begin 		
 	if rising_edge(clk) then
-		if (rstp = '1') then
+		if (exp_zz(exp_zz'left) = '1') then
 			cc <= ("000000", '0', x"0000");
 		else
-			if (exp_zz(exp_zz'left) = '1') then
-				cc <= ("000000", sign_c(sign_c'left), frac);
-			else
-				cc <= (expc,     sign_c(sign_c'left), frac);
-			end if;
+			cc <= (expc,     sign_c(sign_c'left), frac);
 		end if;
 	end if;
 end process;

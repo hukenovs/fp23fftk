@@ -30,8 +30,8 @@
 -------------------------------------------------------------------------------
 --
 --	The MIT License (MIT)
---	Copyright (c) 2016 Kapitanov Alexander 													 
---		                                          				 
+--	Copyright (c) 2016 Kapitanov Alexander
+--
 -- Permission is hereby granted, free of charge, to any person obtaining a copy 
 -- of this software and associated documentation files (the "Software"), 
 -- to deal in the Software without restriction, including without limitation 
@@ -50,7 +50,7 @@
 -- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
 -- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS 
 -- IN THE SOFTWARE.
--- 	                                                 
+--
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 library ieee;
@@ -85,8 +85,7 @@ end fp23_mult_m2;
 architecture fp23_mult_m2 of fp23_mult_m2 is 
 
 type std_logic_array_4x6 is array(3 downto 0) of std_logic_vector(5 downto 0);
-
-signal rstp				: std_logic;   
+ 
 signal man_aa			: std_logic_vector(29 downto 0);
 signal man_bb			: std_logic_vector(17 downto 0);
 
@@ -113,42 +112,28 @@ signal exp_zero 		: std_logic;
 signal exp_zeroz		: std_logic;
 
 signal enaz				: std_logic_vector(3 downto 0); 
---signal overflow			: std_logic;
 
 begin
-	
-rstp <= not reset when rising_edge(clk); 	
 
--- finding zero exponents for multipliers
+---- finding zero exponents for multipliers ----
 expa_or <= or_reduce(aa.exp) when rising_edge(clk);
 expb_or <= or_reduce(bb.exp) when rising_edge(clk);
 exp_zero <= (expa_or and expb_or) when rising_edge(clk);
-exp_zeroz <= exp_zero when rising_edge(clk);-- and enaz(1) = '1';
-
--- form overflow via exponents:
---overflow <= expa_or(22) or expb_or(22) when rising_edge(clk);
+exp_zeroz <= exp_zero when rising_edge(clk);
 
 -- forming fractions for mulptiplier
 man_aa(29 downto 18) <= x"000";
-man_aa(17 downto 0) <= "01" & aa.man;	
+man_aa(17 downto 0) <= "01" & aa.man;
 man_bb <= "01" & bb.man;
 
 x7SERIES: if (XSERIES = "7SERIES") generate
-	NORMALIZE: DSP48E1 --   +/-(A*B+Cin)   -- for Virtex-6 and 7 families
+	NORMALIZE: DSP48E1
 		generic map (
 			-- Feature Control Attributes: Data Path Selection
-			A_INPUT 			=> "DIRECT",           
-			B_INPUT 			=> "DIRECT",           
-			USE_DPORT 			=> FALSE,              
-			USE_MULT 			=> "MULTIPLY",         
-			USE_SIMD 			=> "ONE48",            
-			-- Pattern Detector Attributes: Pattern Detection Configuration
-			AUTORESET_PATDET 	=> "NO_RESET",    	
-			MASK 				=> X"3fffffffffff", 
-			PATTERN 			=> X"000000000000", 
-			SEL_MASK 			=> "MASK",          
-			SEL_PATTERN 		=> "PATTERN",       
-			USE_PATTERN_DETECT 	=> "NO_PATDET", 	
+			A_INPUT 			=> "DIRECT",
+			B_INPUT 			=> "DIRECT",
+			USE_DPORT 			=> FALSE,
+			USE_MULT 			=> "MULTIPLY",
 			-- Register Control Attributes: Pipeline Register Configuration
 			ACASCREG 			=> 1,
 			ADREG 				=> 1,
@@ -167,11 +152,11 @@ x7SERIES: if (XSERIES = "7SERIES") generate
 		)
 		port map (
 			-- Cascade: 30-bit (each) output: Cascade Ports
-			ACOUT 				=> open,    
-			BCOUT 				=> open,    
-			CARRYCASCOUT 		=> open,    
-			MULTSIGNOUT 		=> open,    
-			PCOUT 				=> open,    
+			ACOUT 				=> open,
+			BCOUT 				=> open,
+			CARRYCASCOUT 		=> open,
+			MULTSIGNOUT 		=> open,
+			PCOUT 				=> open,
 			-- Control: 1-bit (each) output: Control Inputs/Status Bits
 			OVERFLOW 			=> open,
 			PATTERNBDETECT 		=> open,
@@ -183,9 +168,9 @@ x7SERIES: if (XSERIES = "7SERIES") generate
 			-- Cascade: 30-bit (each) input: Cascade Ports
 			ACIN 				=> (others=>'0'),
 			BCIN 				=> (others=>'0'),
-			CARRYCASCIN 		=> '0',    
-			MULTSIGNIN 			=> '0',    
-			PCIN 				=> (others=>'0'),              
+			CARRYCASCIN 		=> '0',
+			MULTSIGNIN 			=> '0',
+			PCIN 				=> (others=>'0'),
 			-- Control: 4-bit (each) input: Control Inputs/Status Bits
 			ALUMODE 			=> (others=>'0'),
 			CARRYINSEL 			=> (others=>'0'),
@@ -193,35 +178,35 @@ x7SERIES: if (XSERIES = "7SERIES") generate
 			INMODE 				=> (others=>'0'),
 			OPMODE 				=> "0000101", 
 			-- Data: 30-bit (each) input: Data Ports
-			A 					=> man_aa,    
-			B 					=> man_bb,    
-			C 					=> (others=>'0'),         
+			A 					=> man_aa,
+			B 					=> man_bb,
+			C 					=> (others=>'0'),
 			CARRYIN 			=> '0',
 			D 					=> (others=>'0'),
 			-- Reset/Clock Enable: 1-bit (each) input: Reset/Clock Enable Inputs
 			CEA1 				=> enable, 
-			CEA2 				=> '1',    
-			CEAD 				=> '0',    
-			CEALUMODE 			=> '1',           
-			CEB1 				=> enable,                     
-			CEB2 				=> '1',                     
-			CEC 				=> '1',                       
-			CECARRYIN 			=> '1',         
-			CECTRL 				=> '1',            
-			CED 				=> '0',               
-			CEINMODE 			=> '1',          
-			CEM 				=> '1',--enaz(0),                       
-			CEP 				=> '1',--enaz(1),                       
-			RSTA				=> rstp,           
-			RSTALLCARRYIN 		=> rstp,  
-			RSTALUMODE 			=> rstp,     
-			RSTB 				=> rstp,           
-			RSTC 				=> rstp,           
-			RSTCTRL 			=> rstp,        
-			RSTD 				=> '0',           
-			RSTINMODE 			=> rstp,      
-			RSTM 				=> rstp,           
-			RSTP 				=> rstp            
+			CEA2 				=> '1',
+			CEAD 				=> '0',
+			CEALUMODE 			=> '1',
+			CEB1 				=> enable,
+			CEB2 				=> '1',
+			CEC 				=> '1',
+			CECARRYIN 			=> '1',
+			CECTRL 				=> '1',
+			CED 				=> '1',
+			CEINMODE 			=> '1',
+			CEM 				=> '1',
+			CEP 				=> '1',
+			RSTA				=> reset,
+			RSTALLCARRYIN 		=> reset,
+			RSTALUMODE 			=> reset,
+			RSTB 				=> reset,
+			RSTC 				=> reset,
+			RSTCTRL 			=> reset,
+			RSTD 				=> reset, 
+			RSTINMODE 			=> reset,
+			RSTM 				=> reset,
+			RSTP 				=> reset 
 		);
 end generate;
 
@@ -229,24 +214,12 @@ xULTRA: if (XSERIES = "ULTRA") generate
 	NORMALIZE : DSP48E2
 		generic map (
 			-- Feature Control Attributes: Data Path Selection
-			AMULTSEL 			=> "A",             
-			A_INPUT 			=> "DIRECT",        
-			BMULTSEL 			=> "B",             
-			B_INPUT 			=> "DIRECT",        
-			PREADDINSEL 		=> "A",             
-			RND 				=> X"000000000000", 
-			USE_MULT 			=> "MULTIPLY",      
-			USE_SIMD 			=> "ONE48",         
-			USE_WIDEXOR 		=> "FALSE",         
-			XORSIMD 			=> "XOR24_48_96",   
-			-- Pattern Detector Attributes: Pattern Detection Configuration
-			AUTORESET_PATDET 	=> "NO_RESET", 
-			AUTORESET_PRIORITY 	=> "RESET",    
-			MASK 				=> X"3fffffffffff",           
-			PATTERN 			=> X"000000000000",        
-			SEL_MASK 			=> "MASK",                
-			SEL_PATTERN 		=> "PATTERN",          
-			USE_PATTERN_DETECT 	=> "NO_PATDET", 
+			AMULTSEL 			=> "A",
+			A_INPUT 			=> "DIRECT",
+			BMULTSEL 			=> "B",
+			B_INPUT 			=> "DIRECT",
+			PREADDINSEL 		=> "A",
+			USE_MULT 			=> "MULTIPLY",
 			-- Register Control Attributes: Pipeline Register Configuration
 			ACASCREG 			=> 1,
 			ADREG 				=> 1,
@@ -265,11 +238,11 @@ xULTRA: if (XSERIES = "ULTRA") generate
 		)
 		port map (
 			-- Cascade: 30-bit (each) output: Cascade Ports
-			ACOUT 				=> open,    
-			BCOUT 				=> open,    
-			CARRYCASCOUT 		=> open,    
-			MULTSIGNOUT 		=> open,    
-			PCOUT 				=> open,   
+			ACOUT 				=> open,
+			BCOUT 				=> open,
+			CARRYCASCOUT 		=> open,
+			MULTSIGNOUT 		=> open,
+			PCOUT 				=> open,
 			-- Control: 1-bit (each) output: Control Inputs/Status Bits
 			OVERFLOW 			=> open,
 			PATTERNBDETECT 		=> open,
@@ -282,9 +255,9 @@ xULTRA: if (XSERIES = "ULTRA") generate
 			-- Cascade: 30-bit (each) input: Cascade Ports
 			ACIN 				=> (others=>'0'),
 			BCIN 				=> (others=>'0'),
-			CARRYCASCIN 		=> '0',    
-			MULTSIGNIN 			=> '0',    
-			PCIN 				=> (others=>'0'),              
+			CARRYCASCIN 		=> '0',
+			MULTSIGNIN 			=> '0',
+			PCIN 				=> (others=>'0'),
 			-- Control: 4-bit (each) input: Control Inputs/Status Bits
 			ALUMODE 			=> (others=>'0'),
 			CARRYINSEL 			=> (others=>'0'),
@@ -292,35 +265,35 @@ xULTRA: if (XSERIES = "ULTRA") generate
 			INMODE 				=> (others=>'0'),
 			OPMODE 				=> "000000101", 
 			-- Data inputs: Data Ports
-			A 					=> man_aa,    
-			B 					=> man_bb,    
-			C 					=> (others=>'0'),         
+			A 					=> man_aa,
+			B 					=> man_bb,
+			C 					=> (others=>'0'),
 			CARRYIN 			=> '0',
 			D 					=> (others=>'0'),
 			-- Reset/Clock Enable inputs: Reset/Clock Enable Inputs
-			CEA1 				=> enable, 
-			CEA2 				=> '1',    
-			CEAD 				=> '0',    
-			CEALUMODE 			=> '1',           
-			CEB1 				=> enable,                     
-			CEB2 				=> '1',                     
-			CEC 				=> '1',                       
-			CECARRYIN 			=> '1',         
-			CECTRL 				=> '1',            
-			CED 				=> '0',               
-			CEINMODE 			=> '1',          
-			CEM 				=> '1',--enaz(0),                       
-			CEP 				=> '1',--enaz(1),                       
-			RSTA				=> rstp,           
-			RSTALLCARRYIN 		=> rstp,  
-			RSTALUMODE 			=> rstp,     
-			RSTB 				=> rstp,           
-			RSTC 				=> rstp,           
-			RSTCTRL 			=> rstp,        
-			RSTD 				=> '0',           
-			RSTINMODE 			=> rstp,      
-			RSTM 				=> rstp,           
-			RSTP 				=> rstp   
+			CEA1 				=> enable,
+			CEA2 				=> '1',
+			CEAD 				=> '0',
+			CEALUMODE 			=> '1',
+			CEB1 				=> enable,
+			CEB2 				=> '1',
+			CEC 				=> '1',
+			CECARRYIN 			=> '1',
+			CECTRL 				=> '1',
+			CED 				=> '1',
+			CEINMODE 			=> '1',
+			CEM 				=> '1',
+			CEP 				=> '1',
+			RSTA				=> reset,
+			RSTALLCARRYIN 		=> reset,
+			RSTALUMODE 			=> reset,
+			RSTB 				=> reset,
+			RSTC 				=> reset,
+			RSTCTRL 			=> reset,
+			RSTD 				=> reset, 
+			RSTINMODE 			=> reset,
+			RSTM 				=> reset,
+			RSTP 				=> reset 
 	   );
 end generate;		
 
@@ -341,7 +314,7 @@ begin
 end process;
 
  
--- find sign as xor of signs --		
+-- find sign as xor of signs --
 pr_sign: process(clk) is
 begin
 	if rising_edge(clk) then
@@ -369,14 +342,10 @@ exp_underflowz <= (exp_zeroz) when rising_edge(clk);
 pr_dout: process(clk) is
 begin 		
 	if rising_edge(clk) then
-		if (rstp = '1') then
+		if (exp_underflowz = '0') then
 			cc <= ("000000", '0', x"0000");
 		else
-			if (exp_underflowz = '0') then
-				cc <= ("000000", '0', x"0000");
-			else
-				cc <= (exp_cc, sig_ccz(2), man_cc);
-			end if;
+			cc <= (exp_cc, sig_ccz(2), man_cc);
 		end if;
 	end if;
 end process;	
