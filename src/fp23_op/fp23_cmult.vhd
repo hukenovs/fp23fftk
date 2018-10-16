@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --
--- Title       : fp23_cmult_m1
+-- Title       : fp23_cmult
 -- Design      : fpfftk
 -- Author      : Kapitanov
 -- Company     :
@@ -52,7 +52,7 @@ library work;
 use work.fp_m1_pkg.fp23_complex;
 use work.fp_m1_pkg.fp23_data; 
 
-entity fp23_cmult_m1 is
+entity fp23_cmult is
 	generic (
 		XSERIES : string:="7SERIES" --! Xilinx series
 	);
@@ -67,9 +67,9 @@ entity fp23_cmult_m1 is
 		RESET   : in  STD_LOGIC; --! Reset            
 		CLK     : in  STD_LOGIC	--! Clock	         
 	);	
-end fp23_cmult_m1;
+end fp23_cmult;
 
-architecture fp23_cmult_m1 of fp23_cmult_m1 is
+architecture fp23_cmult of fp23_cmult is
 
 signal fp23_cc		: fp23_complex;	
 signal fp23_val		: std_logic;
@@ -85,7 +85,7 @@ constant CM_SCALE	: std_logic_vector(5 downto 0):="011111";
 begin
    
 ---------------- FlOAT MULTIPLY A*B ----------------		
-ARExBRE : entity work.fp23_mult_m2
+ARExBRE : entity work.fp23_mult
 	generic map( 
 		XSERIES => XSERIES,
 		EXP_DIF => CM_SCALE
@@ -100,7 +100,7 @@ ARExBRE : entity work.fp23_mult_m2
 		clk 	=> clk
 	);	
 	
-AIMxBIM : entity work.fp23_mult_m2
+AIMxBIM : entity work.fp23_mult
 	generic map( 
 		XSERIES => XSERIES,		
 		EXP_DIF => CM_SCALE
@@ -116,7 +116,7 @@ AIMxBIM : entity work.fp23_mult_m2
 	);	
 	
 	
-ARExBIM : entity work.fp23_mult_m2
+ARExBIM : entity work.fp23_mult
 	generic map( 
 		XSERIES => XSERIES,		
 		EXP_DIF => CM_SCALE
@@ -131,7 +131,7 @@ ARExBIM : entity work.fp23_mult_m2
 		clk 	=> clk
 	);		
 	
-AIMxBRE : entity work.fp23_mult_m2
+AIMxBRE : entity work.fp23_mult
 	generic map( 
 		XSERIES => XSERIES,		
 		EXP_DIF => CM_SCALE
@@ -147,7 +147,10 @@ AIMxBRE : entity work.fp23_mult_m2
 	);		
 		
 ---------------- FlOAT ADD/SUB +/- ----------------	
-AB_ADD : entity work.fp23_addsub_m2
+AB_ADD : entity work.fp23_addsub
+	generic map( 
+		XSERIES => XSERIES 
+	)	
 	port map (
 		aa 		=> fp23_are_bim,	
 		bb 		=> fp23_aim_bre,	
@@ -159,7 +162,10 @@ AB_ADD : entity work.fp23_addsub_m2
 		clk 	=> clk
 	);
 	
-AB_SUB : entity work.fp23_addsub_m2
+AB_SUB : entity work.fp23_addsub
+	generic map( 
+		XSERIES => XSERIES 
+	)	
 	port map (
 		aa 		=> fp23_are_bre,	
 		bb 		=> fp23_aim_bim,	
@@ -174,4 +180,4 @@ AB_SUB : entity work.fp23_addsub_m2
 DC <= fp23_cc when rising_edge(clk);
 VAL	<= fp23_val when rising_edge(clk);
 
-end fp23_cmult_m1;
+end fp23_cmult;
