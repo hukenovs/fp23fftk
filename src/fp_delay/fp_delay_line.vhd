@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --
--- Title       : fp_delay_line_m1
+-- Title       : fp_delay_line
 -- Design      : fpfftk
 -- Author      : Kapitanov
 -- Company     :
@@ -80,7 +80,7 @@ use ieee.std_logic_1164.all;
 use ieee.std_logic_arith.all;
 use ieee.std_logic_unsigned.all;
 
-entity fp_delay_line_m1 is
+entity fp_delay_line is
 	generic(
 		td			: time:=1ns; --! Time delay for simulation	
 		NFFT		: integer:=18; --! FFT NFFT
@@ -99,9 +99,9 @@ entity fp_delay_line_m1 is
 		reset  		: in  std_logic; --! Reset
 		clk 		: in  std_logic --! Clock	
 	);	
-end fp_delay_line_m1;
+end fp_delay_line;
 
-architecture fp_delay_line_m1 of fp_delay_line_m1 is 
+architecture fp_delay_line of fp_delay_line is 
 
 constant N_INV			: integer:=NFFT-stage-2; 
 
@@ -111,7 +111,6 @@ signal oa_e				: std_logic_vector(Nwidth-1 downto 0);
 signal ob_e				: std_logic_vector(Nwidth-1 downto 0);
 
 signal din_enz			: std_logic;
-signal rstp				: std_logic;
 
 signal ram0_din			: std_logic_vector(Nwidth-1 downto 0):=(others => '0');
 signal ram0_dout    	: std_logic_vector(Nwidth-1 downto 0):=(others => '0');
@@ -123,12 +122,11 @@ signal iaz 				: std_logic_vector(Nwidth-1 downto 0);
 begin
  
 -- Common processes for delay lines --
-rstp <= not reset when rising_edge(clk);	
-	
+
 pr_cnt_wrcr: process(clk) is
 begin
 	if rising_edge(clk) then
-		if (rstp = '1') then 
+		if (reset = '1') then 
 			cnt_wrcr <= (others => '0');			
 		else
 			if (din_enz = '1') then
@@ -141,7 +139,7 @@ end process;
 pr_din: process(clk) is
 begin		
 	if rising_edge(clk) then
-		if (rstp = '1') then
+		if (reset = '1') then
 			ram0_din <=	(others => '0');
 			ram1_din <=	(others => '0');
 		else
@@ -247,7 +245,7 @@ begin
 	pr_cnd: process(clk) is
 	begin
 		if rising_edge(clk) then
-			if (rstp = '1') then 
+			if (reset = '1') then 
 				cnt_trd <= (0 => '1', others => '0');
 				cnt_twr <= (0 => '1', others => '0');
 				cnt_ena <= '0';
@@ -306,7 +304,7 @@ begin
 	pr_cnt: process(clk) is
 	begin
 		if rising_edge(clk) then
-			if (rstp = '1') then 
+			if (reset = '1') then 
 				cnt_wr <= (others => '0');
 				-- cnt_rd <= (others => '0');
 			else
@@ -339,7 +337,7 @@ begin
 	RAM0: process(clk) is
 	begin
 		if (clk'event and clk = '1') then
-			if (rstp = '1') then
+			if (reset = '1') then
 				ram0_dout <= (others => '0');
 			else
 				if (del_o = '1') then
@@ -355,7 +353,7 @@ begin
 	RAM1: process(clk) is
 	begin
 		if (clk'event and clk = '1') then
-			if (rstp = '1') then
+			if (reset = '1') then
 				ram1_dout <= (others => '0');
 			else
 				if (wes1 = '1') then
@@ -369,4 +367,4 @@ begin
 	end process;	
 end generate;
 
-end fp_delay_line_m1;
+end fp_delay_line;

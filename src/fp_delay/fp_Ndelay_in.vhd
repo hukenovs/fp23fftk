@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --
--- Title       : fp_Ndelay_in_m1_pkg
+-- Title       : fp_Ndelay_in
 -- Design      : fpfftk
 -- Author      : Kapitanov
 -- Company     :
@@ -44,7 +44,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.std_logic_unsigned.all;
 
-entity fp_Ndelay_in_m1 is
+entity fp_Ndelay_in is
 	generic (
 		td			: time:=1ns; --! Time delay for simulation
 		STAGES		: integer:=7; --! FFT stages
@@ -64,9 +64,9 @@ entity fp_Ndelay_in_m1 is
 		cb_im		: out std_logic_vector(Nwidth-1 downto 0); --! Odd Imag 		
 		dout_val	: out std_logic --! Data valid		
 	);	
-end fp_Ndelay_in_m1;
+end fp_Ndelay_in;
 
-architecture fp_Ndelay_in_m1 of fp_Ndelay_in_m1 is
+architecture fp_Ndelay_in of fp_Ndelay_in is
 
 signal addra			: std_logic_vector(STAGES-2 downto 0);
 signal addrb			: std_logic_vector(STAGES-2 downto 0);
@@ -81,7 +81,6 @@ signal din_imzz			: std_logic_vector(Nwidth-1 downto 0);
 signal ram_din			: std_logic_vector(2*Nwidth-1 downto 0);
 signal ram_dout			: std_logic_vector(2*Nwidth-1 downto 0);
 
-signal rstp				: std_logic;
 signal dout_en			: std_logic; 
 signal dout_enz			: std_logic; 
 signal ena				: std_logic;
@@ -90,8 +89,6 @@ signal wea				: std_logic;
 begin	
 	
 -- Common processes for delay lines --
-rstp <= not reset after td when rising_edge(clk);	
-
 din_rez <= din_re after td when rising_edge(clk);
 din_imz <= din_im after td when rising_edge(clk);
 
@@ -101,7 +98,7 @@ din_imzz <= din_imz after td when rising_edge(clk);
 pr_cnt: process(clk) is
 begin
 	if rising_edge(clk) then
-		if (reset = '0') then
+		if (reset = '1') then
 			cnt <= (others => '0') after td;		
 		else
 			if (din_en = '1') then
@@ -140,7 +137,7 @@ begin
 	begin
 		if (clk'event and clk = '1') then
 			ram_dout <= dout after td;
-			if (rstp = '1') then
+			if (reset = '1') then
 				dout <= (others => '0');
 			else
 				if (enb = '1') then
@@ -182,4 +179,4 @@ begin
 	ca_im <= ram_dout(2*Nwidth-1 downto Nwidth) after td when rising_edge(clk) and dout_enz = '1';			
 end generate; 
 
-end fp_Ndelay_in_m1;
+end fp_Ndelay_in;

@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --
--- Title       : fp_bitrev_m1_pkg
+-- Title       : fp_bitrev_ord
 -- Design      : fpfftk
 -- Author      : Kapitanov
 -- Company     : 
@@ -44,7 +44,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.std_logic_unsigned.all;
 
-entity fp_bitrev_m1 is
+entity fp_bitrev_ord is
 	generic (
 		td			: time:=1ns; --! Time delay for simulation
 		FWT			: boolean:=TRUE; --! Bitreverse mode: Even/Odd - "TRUE" or Half Pair - "FALSE". For FFT: "TRUE"		
@@ -55,27 +55,21 @@ entity fp_bitrev_m1 is
 	port(								
 		clk  		: in  std_logic; --! Clock
 		reset 		: in  std_logic; --! Reset		
-				
+
 		di_dt		: in  std_logic_vector(Nwidth-1 downto 0); --! Data input
 		di_en		: in  std_logic; --! Data enable
 
 		do_dt		: out std_logic_vector(Nwidth-1 downto 0); --! Data output	
 		do_vl		: out std_logic --! Data valid		
 	);	
-end fp_bitrev_m1;
+end fp_bitrev_ord;
 
-architecture fp_bitrev_m1 of fp_bitrev_m1 is
+architecture fp_bitrev_ord of fp_bitrev_ord is
 
 signal addra			: std_logic_vector(STAGES-1 downto 0);
 signal addrx			: std_logic_vector(STAGES-1 downto 0);
 signal addrb			: std_logic_vector(STAGES-1 downto 0);
 signal cnt				: std_logic_vector(STAGES downto 0);	  
-
--- signal din_rez			: std_logic_vector(Nwidth-1 downto 0);
--- signal din_imz			: std_logic_vector(Nwidth-1 downto 0);
--- signal din_rezz			: std_logic_vector(Nwidth-1 downto 0);
--- signal din_imzz			: std_logic_vector(Nwidth-1 downto 0); 
-
 
 signal ram_di0			: std_logic_vector(Nwidth-1 downto 0);
 signal ram_do0			: std_logic_vector(Nwidth-1 downto 0);
@@ -88,8 +82,6 @@ signal vl0, vl1			: std_logic;
 signal cntz				: std_logic_vector(1 downto 0);
 signal dmux				: std_logic;
 signal valid			: std_logic;
-
-signal rstp				: std_logic;
 
 function bit_pair(Len: integer; Dat: std_logic_vector) return std_logic_vector is
 	variable Tmp : std_logic_vector(Len-1 downto 0);
@@ -114,14 +106,12 @@ end function;
 signal cnt1st		: std_logic_vector(STAGES downto 0);	
 
 begin
-  	
-rstp <= not reset when rising_edge(clk);	
-	
+
 -- Data out and valid proc --	
 pr_cnt1: process(clk) is
 begin
 	if rising_edge(clk) then
-		if (rstp = '1') then
+		if (reset = '1') then
 			cnt1st <= (others => '0');		
 		else		
 			if (valid = '1') then
@@ -165,7 +155,7 @@ addrx <= cnt(STAGES-1 downto 0) after td when rising_edge(clk);
 pr_dout: process(clk) is
 begin
 	if rising_edge(clk) then
-		if (rstp = '1') then
+		if (reset = '1') then
 			do_dt <= (others => '0') after td;		
 		else
 			if (dmux = '0') then
@@ -185,7 +175,7 @@ ram_di1 <= di_dt when rising_edge(clk);
 pr_cnt: process(clk) is
 begin
 	if rising_edge(clk) then
-		if (rstp = '1') then
+		if (reset = '1') then
 			cnt <= (others => '0') after td;		
 		else
 			if (di_en = '1') then
@@ -199,7 +189,7 @@ cntz <= cntz(0) & cnt(STAGES) after td when rising_edge(clk);
 pr_we: process(clk) is
 begin
 	if rising_edge(clk) then
-		if (rstp = '1') then
+		if (reset = '1') then
 			we0 <= '0' after td;
 			we1 <= '0' after td;	
 		else
@@ -276,7 +266,7 @@ begin
 	begin
 		if (clk'event and clk = '1') then
 			ram_do0 <= dout0 after td;
-			if (rstp = '1') then 
+			if (reset = '1') then 
 				dout0 <= (others => '0');
 			else
 				if (rd0 = '1') then
@@ -293,7 +283,7 @@ begin
 	begin
 		if (clk'event and clk = '1') then
 			ram_do1 <= dout1 after td;
-			if (rstp = '1') then
+			if (reset = '1') then
 				dout1 <= (others => '0');
 			else
 				if (rd1 = '1') then
@@ -310,4 +300,4 @@ begin
 	valid <= (vl0 or vl1) after td when rising_edge(clk);
 end generate;
 
-end fp_bitrev_m1;
+end fp_bitrev_ord;
