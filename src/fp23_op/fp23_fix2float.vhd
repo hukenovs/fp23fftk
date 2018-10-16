@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --
--- Title       : fp23_fix2float_m1_
+-- Title       : fp23_fix2float
 -- Design      : fpfftk
 -- Author      : Kapitanov
 -- Company     : 
@@ -92,7 +92,7 @@ library work;
 use work.fp_m1_pkg.fp23_data;
 use work.reduce_pack.nor_reduce;
 
-entity fp23_fix2float_m1 is
+entity fp23_fix2float is
 	port(
 		din			: in  std_logic_vector(15 downto 0);	--! Fixed input data					
 		ena			: in  std_logic;						--! Data enable 		
@@ -101,16 +101,16 @@ entity fp23_fix2float_m1 is
 		clk			: in  std_logic;						--! Clock            
 		reset		: in  std_logic							--! Negative Reset            
 	);
-end fp23_fix2float_m1;
+end fp23_fix2float;
 
-architecture fp23_fix2float_m1 of fp23_fix2float_m1 is 
+architecture fp23_fix2float of fp23_fix2float is 
 
 constant FP32_EXP		: std_logic_vector(5 downto 0):="011111";
 
 signal true_form		: std_logic_vector(15 downto 0):=(others => '0');	
 signal norm				: std_logic_vector(15 downto 0);	
 signal frac           	: std_logic_vector(15 downto 0);	
-signal rstp				: std_logic;
+
 signal set_zero			: std_logic;
 
 signal sum_man		    : std_logic_vector(15 downto 0);
@@ -140,8 +140,6 @@ begin
 		dinh <= din(15);
 	end if;
 end process;   
-
-rstp <= not reset when rising_edge(clk);
 
 ---- make abs(data) by using XOR ----
 pr_abs: process(clk) is
@@ -210,7 +208,7 @@ sign <= sign(sign'left-1 downto 0) & true_form(15) when rising_edge(clk);
 pr_out: process(clk) is 
 begin
 	if rising_edge(clk) then
-		if (rstp = '1') then
+		if (reset = '1') then
 			dout <= ("000000", '0', x"0000");
 		elsif (valid(valid'left) = '1') then
 			dout <= (expc, sign(sign'left), frac);
@@ -221,4 +219,4 @@ end process;
 valid <= valid(valid'left-1 downto 0) & ena when rising_edge(clk);	
 vld <= valid(valid'left) when rising_edge(clk);
 
-end fp23_fix2float_m1;
+end fp23_fix2float;

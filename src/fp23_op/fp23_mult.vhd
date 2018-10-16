@@ -1,6 +1,6 @@
 --------------------------------------------------------------------------------
 --
--- Title       : fp23_mult_m2
+-- Title       : fp23_mult
 -- Design      : fpfftk
 -- Author      : Kapitanov
 -- Company     :
@@ -66,7 +66,7 @@ library work;
 use work.reduce_pack.all;
 use work.fp_m1_pkg.fp23_data;
 
-entity fp23_mult_m2 is
+entity fp23_mult is
 	generic(
 		EXP_DIF	: std_logic_vector(5 downto 0):="011111"; -- DIFF_EXP
 		XSERIES : string:="7SERIES" --! Xilinx series
@@ -80,9 +80,9 @@ entity fp23_mult_m2 is
 		reset  	: in  std_logic;	--! Reset
 		clk 	: in  std_logic		--! Clock	
 	);	
-end fp23_mult_m2;
+end fp23_mult;
 
-architecture fp23_mult_m2 of fp23_mult_m2 is 
+architecture fp23_mult of fp23_mult is 
 
 type std_logic_array_4x6 is array(3 downto 0) of std_logic_vector(5 downto 0);
  
@@ -353,4 +353,4 @@ end process;
 enaz <= enaz(2 downto 0) & enable when rising_edge(clk);
 valid <= enaz(3) when rising_edge(clk);
 
-end fp23_mult_m2;
+end fp23_mult;

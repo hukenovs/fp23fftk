@@ -60,19 +60,21 @@ use work.fp_m1_pkg.fp23_data;
 
 entity fp23_bfly_fwd is
 	generic (
-		STAGE		: integer:=0; --! Butterfly stage
-		XSERIES		: string:="7SERIES"	--! FPGA family: for 6/7 series: "7SERIES"; for ULTRASCALE: "ULTRA";
+		STAGE				: integer:=0; --! Butterfly stage
+		USE_MLT_FOR_ADDSUB	: boolean:=FALSE; --! Use DSP48E1/2 blocks or not for Add/Sub
+		USE_MLT_FOR_CMULT	: boolean:=FALSE; --! Use DSP48E1/2 blocks or not for Complex Mult
+		XSERIES				: string:="7SERIES"	--! FPGA family: for 6/7 series: "7SERIES"; for ULTRASCALE: "ULTRA";
 	);	
 	port(
-		DT_IA       : in  fp23_complex; --! Even data in part
-		DT_IB       : in  fp23_complex; --! Odd data in part
-		DI_EN       : in  std_logic;	--! Data enable
-		WW          : in  fp23_complex; --! Twiddle data
-		DT_OA       : out fp23_complex; --! Even data out
-		DT_OB       : out fp23_complex; --! Odd data out
-		DO_VL       : out std_logic;	--! Data valid
-		RESET       : in  std_logic;	--! Global reset
-		CLK         : in  std_logic		--! Clock	
+		DT_IA       		: in  fp23_complex; --! Even data in part
+		DT_IB       		: in  fp23_complex; --! Odd data in part
+		DI_EN       		: in  std_logic;	--! Data enable
+		WW          		: in  fp23_complex; --! Twiddle data
+		DT_OA       		: out fp23_complex; --! Even data out
+		DT_OB       		: out fp23_complex; --! Odd data out
+		DO_VL       		: out std_logic;	--! Data valid
+		RESET       		: in  std_logic;	--! Global reset
+		CLK         		: in  std_logic		--! Clock	
 	);
 end fp23_bfly_fwd;
 
@@ -85,55 +87,39 @@ signal dval_en		: std_logic_vector(2 downto 0);
 begin
 
 -------- SUM = A + B --------
-ADD_RE: entity work.fp23_addsub_m2 	
-	port map(
+ADDSUB_RE: entity work.fp23_addsub_dbl 	
+	generic map ( 
+		XSERIES => XSERIES,
+		USE_MLT => USE_MLT_FOR_ADDSUB
+	)
+	port map (
 		aa 		=> DT_IA.re, 
 		bb 		=> DT_IB.re, 
-		cc		=> sum.re,  
-		addsub	=> '0',
+		cc_add	=> sum.re,  
+		cc_sub	=> dif.re,
 		enable 	=> DI_EN, 
 		valid 	=> dval_en(0),
 		reset  	=> reset, 
 		clk 	=> clk 
 	);
 
-ADD_IM: entity work.fp23_addsub_m2 	
-	port map(
+ADDSUB_IM: entity work.fp23_addsub_dbl 	
+	generic map ( 
+		XSERIES => XSERIES,
+		USE_MLT => USE_MLT_FOR_ADDSUB
+	)
+	port map (
 		aa 		=> DT_IA.im, 
 		bb 		=> DT_IB.im, 
-		cc		=> sum.im,  
-		addsub	=> '0',
-		enable 	=> DI_EN, 
+		cc_add	=> sum.im,  
+		cc_sub	=> dif.im, 
+		enable 	=> DI_EN,
 		reset  	=> reset, 
 		clk 	=> clk 
 	);
 	
--------- DIF = A - B --------
-SUB_RE: entity work.fp23_addsub_m2 
-	port map(
-		aa 		=> DT_IA.re, 
-		bb 		=> DT_IB.re, 
-		cc		=> dif.re,  
-		addsub	=> '1',
-		enable 	=> DI_EN, 
-		reset  	=> reset, 
-		clk 	=> clk 
-	);	
-
-SUB_IM: entity work.fp23_addsub_m2 
-	port map(
-		aa 		=> DT_IA.im, 
-		bb 		=> DT_IB.im, 
-		cc		=> dif.im,  
-		addsub	=> '1',
-		enable 	=> DI_EN, 
-		reset  	=> reset, 
-		clk 	=> clk 
-	);		
-
 ---- First butterfly: don't need multipliers! WW0 = {1, 0} ----
 xST0: if (STAGE = 0) generate
-
 begin
 	DT_OA <= sum;
 	DT_OB <= dif;
@@ -148,7 +134,7 @@ begin
 	pr_cnt: process(clk) is
 	begin
 		if rising_edge(clk) then
-			if (RESET = '0') then
+			if (reset = '1') then
 				dt_sw <= '0';
 			elsif (dval_en(0) = '1') then
 				dt_sw <= not dt_sw;
@@ -176,7 +162,7 @@ begin
 end generate;
 
 xSTn: if (STAGE > 1) generate
-	type complex_fp23x14 is array(14 downto 0) of fp23_complex;
+	type complex_fp23x14 is array(13 downto 0) of fp23_complex;
 	
 	signal re_x_re 		: fp23_data;
 	signal im_x_im 		: fp23_data;
@@ -242,8 +228,12 @@ begin
 		);	
 		
 	-------- DT_OB = COMPL MULT --------
-	DT_OB_IM_ADD: entity work.fp23_addsub_m2
-		port map(
+	DT_OB_IM_ADD: entity work.fp23_addsub
+		generic map ( 
+			XSERIES => XSERIES,
+			USE_MLT => USE_MLT_FOR_CMULT
+		)		
+		port map (
 			aa 		=> re_x_im, 		
 			bb 		=> im_x_re, 		
 			cc 		=> sob.im,	
@@ -253,8 +243,12 @@ begin
 			clk 	=> clk 	
 		);	
 		
-	DT_OB_RE_SUB: entity work.fp23_addsub_m2 
-		port map(
+	DT_OB_RE_SUB: entity work.fp23_addsub
+		generic map ( 
+			XSERIES => XSERIES,
+			USE_MLT => USE_MLT_FOR_CMULT
+		)		
+		port map (
 			aa 		=> re_x_re,
 			bb 		=> im_x_im,
 			cc 		=> sob.re, 	

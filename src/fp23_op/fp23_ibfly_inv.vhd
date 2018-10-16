@@ -56,20 +56,22 @@ use work.fp_m1_pkg.fp23_data;
 
 entity fp23_ibfly_inv is
 	generic (
-		STAGE		: integer:=0; --! Butterfly stage
-		USE_CONJ 	: boolean:=FALSE; --! Use conjugation for IFFT
-		XSERIES		: string:="7SERIES"	--! FPGA family: for 6/7 series: "7SERIES"; for ULTRASCALE: "ULTRA";
+		STAGE				: integer:=0; --! Butterfly stage
+		USE_CONJ 			: boolean:=FALSE; --! Use conjugation for IFFT
+		USE_MLT_FOR_ADDSUB	: boolean:=FALSE; --! Use DSP48E1/2 blocks or not for Add/Sub
+		USE_MLT_FOR_CMULT	: boolean:=FALSE; --! Use DSP48E1/2 blocks or not for Complex Mult
+		XSERIES				: string:="7SERIES"	--! FPGA family: for 6/7 series: "7SERIES"; for ULTRASCALE: "ULTRA";
 	);	
 	port(
-		DT_IA 		: in  fp23_complex; --! Even data in part
-		DT_IB 		: in  fp23_complex; --! Odd data in part
-		DI_EN 		: in  std_logic;	--! Data enable
-		WW 			: in  fp23_complex; --! Twiddle data
-		DT_OA 		: out fp23_complex; --! Even data out
-		DT_OB 		: out fp23_complex; --! Odd data out
-		DO_VL		: out std_logic;	--! Data valid
-		RESET  		: in  std_logic;	--! Global reset
-		CLK 		: in  std_logic		--! Clock	
+		DT_IA 				: in  fp23_complex; --! Even data in part
+		DT_IB 				: in  fp23_complex; --! Odd data in part
+		DI_EN 				: in  std_logic;	--! Data enable
+		WW 					: in  fp23_complex; --! Twiddle data
+		DT_OA 				: out fp23_complex; --! Even data out
+		DT_OB 				: out fp23_complex; --! Odd data out
+		DO_VL				: out std_logic;	--! Data valid
+		RESET  				: in  std_logic;	--! Global reset
+		CLK 				: in  std_logic		--! Clock	
 	);
 end fp23_ibfly_inv;
 
@@ -101,7 +103,7 @@ begin
 	pr_cnt: process(clk) is
 	begin
 		if rising_edge(clk) then
-			if (RESET = '0') then
+			if (reset = '1') then
 				dt_sw <= '0';
 			elsif (DI_EN = '1') then
 				dt_sw <= not dt_sw;
@@ -220,8 +222,12 @@ begin
 	G_CONJ_FALSE: if use_conj = FALSE generate
 	begin
 		-------- WW conjugation --------
-		DT_OB_IM_SUB: entity work.fp23_addsub_m2 
-			port map(
+		DT_OB_IM_SUB: entity work.fp23_addsub
+			generic map ( 
+				XSERIES => XSERIES,
+				USE_MLT => USE_MLT_FOR_CMULT
+			)		
+			port map (
 				aa 		=> im_x_re, 
 				bb 		=> re_x_im,
 				cc 		=> bw.im,
@@ -231,8 +237,12 @@ begin
 				clk 	=> clk 	
 			);	
 			
-		DT_OB_RE_ADD: entity work.fp23_addsub_m2 
-			port map(
+		DT_OB_RE_ADD: entity work.fp23_addsub 
+			generic map ( 
+				XSERIES => XSERIES,
+				USE_MLT => USE_MLT_FOR_CMULT
+			)		
+			port map (
 				aa 		=> re_x_re,
 				bb 		=> im_x_im,
 				cc 		=> bw.re, 	
@@ -247,8 +257,12 @@ begin
 	G_CONJ_TRUE: if use_conj = TRUE generate
 	begin
 		-------- WW conjugation --------
-		DT_OB_IM_ADD: entity work.fp23_addsub_m2 
-			port map(
+		DT_OB_IM_ADD: entity work.fp23_addsub
+			generic map ( 
+				XSERIES => XSERIES,
+				USE_MLT => USE_MLT_FOR_CMULT
+			)		
+			port map (
 				aa 		=> im_x_re,
 				bb 		=> re_x_im,
 				cc 		=> bw.im,	
@@ -258,8 +272,12 @@ begin
 				clk 	=> clk 	
 			);	
 			
-		DT_OB_RE_SUB: entity work.fp23_addsub_m2 
-			port map(
+		DT_OB_RE_SUB: entity work.fp23_addsub
+			generic map ( 
+				XSERIES => XSERIES,
+				USE_MLT => USE_MLT_FOR_CMULT
+			)		
+			port map (
 				aa 		=> re_x_re,
 				bb 		=> im_x_im,
 				cc 		=> bw.re, 	
@@ -277,50 +295,37 @@ begin
 end generate;
 
 -------- DT_OA & DT_OB --------	
-ADD_RE: entity work.fp23_addsub_m2 	
-	port map(
+ADDSUB_RE: entity work.fp23_addsub_dbl 	
+	generic map ( 
+		XSERIES => XSERIES,
+		USE_MLT => USE_MLT_FOR_ADDSUB
+	)
+	port map (
 		aa 		=> aw.re,
 		bb 		=> bw.re,
-		cc 		=> sum.re, 
-		reset 	=> reset,
-		addsub	=> '0',		
+		cc_add	=> sum.re,
+		cc_sub	=> dif.re,
+		reset 	=> reset,	
 		enable 	=> dval_en(1), 	
 		clk 	=> clk 	
 	);
 	
-ADD_IM: entity work.fp23_addsub_m2
-	port map(
+ADD_IM: entity work.fp23_addsub_dbl
+	generic map ( 
+		XSERIES => XSERIES,
+		USE_MLT => USE_MLT_FOR_ADDSUB
+	)
+	port map (
 		aa 		=> aw.im,
 		bb 		=> bw.im,
-		cc 		=> sum.im,
-		reset 	=> reset,
-		addsub	=> '0',		
+		cc_add	=> sum.im,
+		cc_sub	=> dif.im,
+		reset 	=> reset,		
 		enable 	=> dval_en(1), 
 		valid	=> dval_en(2), 	
 		clk 	=> clk 	
 	);	
 
-SUB_RE: entity work.fp23_addsub_m2 	
-	port map(
-		aa 		=> aw.re,
-		bb 		=> bw.re, 		
-		cc 		=> dif.re, 
-		reset 	=> reset,
-		addsub	=> '1',		
-		enable 	=> dval_en(1),
-		clk 	=> clk 	
-	);
-	
-SUB_IM: entity work.fp23_addsub_m2
-	port map(
-		aa 		=> aw.im,
-		bb 		=> bw.im,
-		cc 		=> dif.im,
-		reset 	=> reset,
-		addsub	=> '1',		
-		enable 	=> dval_en(1), 	
-		clk 	=> clk 	
-	);
 	
 DT_OA <= sum;
 DT_OB <= dif;

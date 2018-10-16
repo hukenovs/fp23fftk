@@ -42,51 +42,6 @@ use ieee.math_real.all;
 
 package	fp_m1_pkg is
 
-	-- Useful types of ROM data for twiddle factor: data width = 16 bit --
-	type std_array_16x1    is array (0 to 0)      of std_logic_vector(15 downto 00); 	
-	type std_array_16x2    is array (0 to 1)      of std_logic_vector(15 downto 00); 	
-	type std_array_16x4    is array (0 to 3)      of std_logic_vector(15 downto 00); 	
-	type std_array_16x8    is array (0 to 7)      of std_logic_vector(15 downto 00); 	
-	type std_array_16x16   is array (0 to 15)     of std_logic_vector(15 downto 00); 	
-	type std_array_16x32   is array (0 to 31)     of std_logic_vector(15 downto 00); 	
-	type std_array_16x64   is array (0 to 63)     of std_logic_vector(15 downto 00); 		
-	type std_array_16x128  is array (0 to 127)    of std_logic_vector(15 downto 00); 		
-	type std_array_16x256  is array (0 to 255)    of std_logic_vector(15 downto 00); 		
-	type std_array_16x512  is array (0 to 511)    of std_logic_vector(15 downto 00); 		
-	type std_array_16x1K   is array (0 to 1023)   of std_logic_vector(15 downto 00); 
-	type std_array_16x2K   is array (0 to 2047)   of std_logic_vector(15 downto 00); 	
-	type std_array_16x4K   is array (0 to 4095)   of std_logic_vector(15 downto 00); 	
-	type std_array_16x8K   is array (0 to 8191)   of std_logic_vector(15 downto 00); 	
-	type std_array_16x16K  is array (0 to 16383)  of std_logic_vector(15 downto 00); 	
-	type std_array_16x32K  is array (0 to 32767)  of std_logic_vector(15 downto 00); 	
-	type std_array_16x64K  is array (0 to 65535)  of std_logic_vector(15 downto 00); 	
-	type std_array_16x128K is array (0 to 131071) of std_logic_vector(15 downto 00); 	
-	type std_array_16x256K is array (0 to 262143) of std_logic_vector(15 downto 00);  
-	type std_array_16x512K is array (0 to 524287) of std_logic_vector(15 downto 00);  
-	
-	-- Useful types of ROM data for twiddle factor: data width = 32 bit --
-	type std_array_32x1    is array (0 to 0)      of std_logic_vector(31 downto 00); 	
-	type std_array_32x2    is array (0 to 1)      of std_logic_vector(31 downto 00); 	
-	type std_array_32x4    is array (0 to 3)      of std_logic_vector(31 downto 00); 	
-	type std_array_32x8    is array (0 to 7)      of std_logic_vector(31 downto 00); 	
-	type std_array_32x16   is array (0 to 15)     of std_logic_vector(31 downto 00); 	
-	type std_array_32x32   is array (0 to 31)     of std_logic_vector(31 downto 00); 	
-	type std_array_32x64   is array (0 to 63)     of std_logic_vector(31 downto 00); 		
-	type std_array_32x128  is array (0 to 127)    of std_logic_vector(31 downto 00); 		
-	type std_array_32x256  is array (0 to 255)    of std_logic_vector(31 downto 00); 		
-	type std_array_32x512  is array (0 to 511)    of std_logic_vector(31 downto 00); 		
-	type std_array_32x1K   is array (0 to 1023)   of std_logic_vector(31 downto 00); 
-	type std_array_32x2K   is array (0 to 2047)   of std_logic_vector(31 downto 00); 	
-	type std_array_32x4K   is array (0 to 4095)   of std_logic_vector(31 downto 00); 	
-	type std_array_32x8K   is array (0 to 8191)   of std_logic_vector(31 downto 00); 	
-	type std_array_32x16K  is array (0 to 16383)  of std_logic_vector(31 downto 00); 	
-	type std_array_32x32K  is array (0 to 32767)  of std_logic_vector(31 downto 00); 	
-	type std_array_32x64K  is array (0 to 65535)  of std_logic_vector(31 downto 00); 	
-	type std_array_32x128K is array (0 to 131071) of std_logic_vector(31 downto 00); 	
-	type std_array_32x256K is array (0 to 262143) of std_logic_vector(31 downto 00);  
-	type std_array_32x512K is array (0 to 524287) of std_logic_vector(31 downto 00); 
-	
-	
 	---- SIN / COS CALCULATING ----
 	constant xNFFT : integer:=11;
 	type std_logic_array_Kx16 is array (0 to 2**(xNFFT-1)-1) of std_logic_vector(15 downto 0);	

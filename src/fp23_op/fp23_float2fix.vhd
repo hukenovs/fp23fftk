@@ -1,6 +1,6 @@
 -------------------------------------------------------------------------------
 --
--- Title       : fp23_float2fix_m1
+-- Title       : fp23_float2fix
 -- Design      : fpfftk
 -- Author      : Kapitanov
 -- Company     :
@@ -99,7 +99,7 @@ use ieee.std_logic_unsigned.all;
 library work;
 use work.fp_m1_pkg.fp23_data;
 
-entity fp23_float2fix_m1 is
+entity fp23_float2fix is
 	generic(
 		DW			: integer:=16 --! Output data width
 	);
@@ -113,14 +113,14 @@ entity fp23_float2fix_m1 is
 		reset		: in  std_logic;						--! Negative reset			
 		overflow	: out std_logic							--! Flag overflow 		                      
 	);
-end fp23_float2fix_m1;
+end fp23_float2fix;
 
-architecture fp23_float2fix_m1 of fp23_float2fix_m1 is 
+architecture fp23_float2fix of fp23_float2fix is 
 
 signal exp_dif			: std_logic_vector(4 downto 0);
 signal exp_dift			: std_logic_vector(5 downto 0);
 signal mant				: std_logic_vector(DW downto 0);
-signal rstp				: std_logic;
+
 signal implied			: std_logic;
 signal frac				: std_logic_vector(DW-1 downto 0);  -- 
 signal sign_z			: std_logic_vector(2 downto 0);	
@@ -139,8 +139,7 @@ signal exp_cmp			: std_logic;
 signal exp_ovr			: std_logic;
 
 begin	
-  
-rstp <= not reset when rising_edge(clk); 
+
 shift <= scale when rising_edge(clk);	
 
 ---- exp difference ----	
@@ -209,7 +208,7 @@ norm_man <= STD_LOGIC_VECTOR(SHR(UNSIGNED(mant(DW downto 1)), UNSIGNED(exp_dif(3
 pr_out: process(clk) is
 begin
 	if rising_edge(clk) then
-		if (rstp = '1') then 
+		if (reset = '1') then 
 			dout <= (others => '0');
 		else			
 			if (exp_nullz = '1') then
@@ -243,4 +242,4 @@ begin
 end process;
 overflow <= overflow_i when rising_edge(clk); 
 
-end fp23_float2fix_m1;
+end fp23_float2fix;
