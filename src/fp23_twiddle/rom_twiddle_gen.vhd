@@ -138,7 +138,8 @@ entity rom_twiddle_gen is
 		NFFT		: integer:=11;	--! FFT lenght
 		STAGE 		: integer:=0;	--! FFT stage		
 		XSERIES		: string:="7SERIES"; --! FPGA family: for 6/7 series: "7SERIES"; for ULTRASCALE: "ULTRA";
-		USE_SCALE	: boolean:=false --! use full scale rambs for twiddle factor or Taylor algotihm		
+		USE_MLT 	: boolean:=FALSE; -- Use DSP48 for Add/Sub in twiddles
+		USE_SCALE	: boolean:=FALSE --! use full scale rambs for twiddle factor or Taylor algotihm		
 	);
 	port(
 		ww			: out fp23_complex; --! Twiddle factor
@@ -171,17 +172,14 @@ attribute rom_style : string;
 attribute rom_style of dpo : signal is ramb_str;
 
 signal div 			: std_logic;
-signal rstp			: std_logic;
 
 signal ww_i	   		: fp23_complex;
 signal ww_o	   		: fp23_complex;
 
 begin 
-	
-rstp <= not reset when rising_edge(clk); 
 
 -- Output data in (INT to FP) format --
-xFP_RE: entity work.fp23_fix2float_m1
+xFP_RE: entity work.fp23_fix2float
 	port map (
 		din		=> ww_node(15 downto 00),
 		ena		=> '1',	
@@ -191,7 +189,7 @@ xFP_RE: entity work.fp23_fix2float_m1
 		reset	=> reset
 	);
 	
-xFP_IM: entity work.fp23_fix2float_m1
+xFP_IM: entity work.fp23_fix2float
 	port map (
 		din		=> ww_node(31 downto 16),
 		ena		=> '1',	
@@ -268,7 +266,7 @@ begin
 	pr_cnt: process(clk) is
 	begin
 		if rising_edge(clk) then
-			if (rstp = '1') then
+			if (reset = '1') then
 				cnt	<=	(others	=>	'0');			
 			elsif (ww_ena = '1') then
 				cnt <= cnt + '1' after td;
@@ -303,6 +301,7 @@ begin
 		cntzz <= cntzz(0 downto 0) & count when rising_edge(clk);	
 		X_TAYLOR_COE: entity work.fp23_cnt2flt_m1
 			generic map (
+				USE_MLT  	=> USE_MLT,
 				XSERIES  	=> XSERIES,
 				ii			=> N_INV-12
 			)
@@ -314,7 +313,7 @@ begin
 				int_cnt		=> cntzz(1),	
 				
 				clk 		=> clk,
-				rstn  		=> reset
+				reset  		=> reset
 			);	
 			
 			ww <= ww_o;	

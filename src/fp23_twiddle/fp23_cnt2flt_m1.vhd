@@ -69,6 +69,7 @@ use WORK.fp_m1_pkg.fp23_complex;
 
 entity fp23_cnt2flt_m1 is
 	generic(
+		USE_MLT : boolean:=FALSE; -- Use DSP48 for Add/Sub in twiddles
 		XSERIES	: string:="7SERIES"; --! FPGA family: for 6/7 series: "7SERIES"; for ULTRASCALE: "ULTRA";
 		ii	: integer:=4 --! 0, 1, 2, 3, 4, 5 -- 16-stages-stage_num
 	);
@@ -80,7 +81,7 @@ entity fp23_cnt2flt_m1 is
 		int_cnt		: in  std_logic_vector(ii downto 0);	--! counter for ROM		
 		
 		clk 		: in  std_logic;	--! global clock
-		rstn  		: in  std_logic		--! negative reset
+		reset  		: in  std_logic		--! negative reset
 	);
 end fp23_cnt2flt_m1;
 
@@ -183,7 +184,7 @@ fp_cnt <= cnt_rom(conv_integer(int_cnt)) when rising_edge(clk);
 ------------------------ FLOATING POINT CALCULATION: --------------------------
 -------------------------------------------------------------------------------
 
-CALC_314_MULT : entity work.fp23_mult_m2
+CALC_314_MULT : entity work.fp23_mult
 	generic map ( XSERIES => XSERIES )
 	port map(
 		aa 		=> fp_cnt,
@@ -191,56 +192,64 @@ CALC_314_MULT : entity work.fp23_mult_m2
 		cc 		=> pi_mult,
 		enable 	=> rom_en,
 		valid	=> pi_en,
-		reset 	=> rstn,
+		reset 	=> reset,
 		clk 	=> clk
 	);	
 	
-CALC_PI_SIN: entity work.fp23_mult_m2 
+CALC_PI_SIN: entity work.fp23_mult 
 	generic map ( XSERIES => XSERIES )
 	port map(
 		aa 		=> rom_ww.im,--del_m_sin, 
 		bb 		=> pi_mult, 
 		cc		=> mlt1_sin,  
-		enable 	=> pi_en, --din_en,
+		enable 	=> pi_en,
 		valid	=> mt_en,
-		reset  	=> rstn, 
+		reset  	=> reset, 
 		clk 	=> clk 
 	);	
 
-CALC_PI_COS: entity work.fp23_mult_m2 
+CALC_PI_COS: entity work.fp23_mult 
 	generic map ( 
 		XSERIES => XSERIES)
 	port map(
 		aa 		=> rom_ww.re, 
 		bb 		=> pi_mult, 
 		cc		=> mlt1_cos,  
-		enable 	=> pi_en, --din_en,
+		enable 	=> pi_en,
 		valid	=> open,
-		reset  	=> rstn, 
+		reset  	=> reset, 
 		clk 	=> clk 
 	);
 		
-CALC_ADD_COS: entity work.fp23_addsub_m2 	
-	port map(
+CALC_ADD_COS: entity work.fp23_addsub
+	generic map ( 
+		XSERIES => XSERIES,
+		USE_MLT => USE_MLT
+	)		
+		port map (
 		aa 		=> res_cos, 
 		bb 		=> mlt1_sin, 
 		cc		=> add2_cos,  
 		addsub 	=> '0',
-		reset  	=> rstn, 
-		enable 	=> mt_en, --din_en,
+		reset  	=> reset, 
+		enable 	=> mt_en,
 		valid	=> open,
 		clk 	=> clk 
 	);			
 	
-CALC_ADD_SIN: entity work.fp23_addsub_m2 	
-	port map(
+CALC_ADD_SIN: entity work.fp23_addsub
+	generic map ( 
+		XSERIES => XSERIES,
+		USE_MLT => USE_MLT
+	)		
+	port map (
 		aa 		=> res_sin, 
 		bb 		=> mlt1_cos, 
 		cc		=> add2_sin,  
 		addsub 	=> '1',
-		reset  	=> rstn, 
-		enable 	=> mt_en, --din_en,
-		valid	=> open,--ad2_en, --ad2_en,
+		reset  	=> reset, 
+		enable 	=> mt_en,
+		valid	=> open,
 		clk 	=> clk 
 	);		
 	
