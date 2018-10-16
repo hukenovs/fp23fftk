@@ -345,7 +345,7 @@ xOUT_BUF : entity work.fp_Ndelay_out
 	);	
 	
 -------------------- BIT REVERSE ORDER --------------------			
-xBITREV_RE : entity work.fp_bitrev_m1
+xBITREV_RE : entity work.fp_bitrev_ord
 	generic map (
 		td			=> td,
 		FWT			=> USE_FWT,
@@ -364,7 +364,7 @@ xBITREV_RE : entity work.fp_bitrev_m1
 		do_vl		=> drev_en
 	);	
 
-xBITREV_IM : entity work.fp_bitrev_m1
+xBITREV_IM : entity work.fp_bitrev_ord
 	generic map (
 		td			=> td,
 		FWT			=> USE_FWT,

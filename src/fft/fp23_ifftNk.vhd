@@ -31,8 +31,8 @@
 -------------------------------------------------------------------------------
 --
 --	The MIT License (MIT)
---	Copyright (c) 2016 Kapitanov Alexander 													 
---		                                          				 
+--	Copyright (c) 2016 Kapitanov Alexander
+--
 -- Permission is hereby granted, free of charge, to any person obtaining a copy 
 -- of this software and associated documentation files (the "Software"), 
 -- to deal in the Software without restriction, including without limitation 
@@ -92,8 +92,6 @@ architecture fp23_ifftNk of fp23_ifftNk is
 constant Nwidth	: integer:=(data_in0.re.exp'length+data_in0.re.man'length+1);
 constant Nman	: integer:=data_in0.re.man'length;
 
-signal rstp				: std_logic;
-
 type complex_fp23xN 	is array (NFFT-1 downto 0) of fp23_complex;
 --type complex_16xfp23xN  is array (15 downto 0) of complex_fp23xN;
 signal ia 				: complex_fp23xN;
@@ -127,9 +125,7 @@ signal do_bb 			: complex_WxN;
 signal coe_en			: std_logic_vector(NFFT-1 downto 0);
 
 begin
-	
-rstp <= not reset when rising_edge(clk);
-	
+
 bfly_en(0) <= data_en;
 ia(0) <= data_in0;
 ib(0) <= data_in1;
@@ -145,7 +141,7 @@ begin
 	BUTTERFLY: entity work.fp23_ibfly_inv
 		generic map (
 			USE_MLT_FOR_ADDSUB	=> USE_MLT_FOR_ADDSUB,
-			USE_MLT_FOR_CMULT	=> USE_MLT_FOR_CMULT,			
+			USE_MLT_FOR_CMULT	=> USE_MLT_FOR_CMULT,
 			STAGE				=> ii,
 			XSERIES				=> XSERIES,
 			USE_CONJ			=> use_conj
@@ -168,7 +164,7 @@ begin
 			NFFT		=> NFFT,
 			STAGE		=> NFFT-1-ii,
 			XSERIES		=> XSERIES,
-			USE_MLT		=> USE_MLT_FOR_TWDLS,			
+			USE_MLT		=> USE_MLT_FOR_TWDLS,
 			USE_SCALE	=> USE_SCALE
 		)
 		port map(
@@ -218,7 +214,7 @@ DELAY_STAGE: for ii in 0 to NFFT-2 generate
 	di_bb(ii) <= (ob(ii).im.exp & ob(ii).im.sig & ob(ii).im.man & ob(ii).re.exp & ob(ii).re.sig & ob(ii).re.man);	
 	del_en(ii) <= bfly_vl(ii);
 	
-	DELAY_LINE : entity work.fp_delay_line_m1
+	DELAY_LINE : entity work.fp_delay_line
 		generic map(
 			Nwidth		=> 2*Nwidth,
 			NFFT		=> NFFT,
@@ -245,7 +241,7 @@ end generate;
 pr_out: process(clk) is
 begin
 	if rising_edge(clk) then
-		if (rstp = '1') then
+		if (reset = '1') then
 			dout_val <= '0';
 			dout0 <= (others => ("000000", '0', x"0000"));
 			dout1 <= (others => ("000000", '0', x"0000"));	

@@ -174,7 +174,7 @@ xSTn: if (STAGE > 1) generate
 	
 begin
 	-------- PROD = DIF * WW --------	
-	RE_RE_MUL : entity work.fp23_mult_m2
+	RE_RE_MUL : entity work.fp23_mult
 		generic map ( 
 			XSERIES => XSERIES
 		)	
@@ -188,7 +188,7 @@ begin
 			clk 	=> clk
 		);	
 		
-	IM_IM_MUL : entity work.fp23_mult_m2
+	IM_IM_MUL : entity work.fp23_mult
 		generic map ( 
 			XSERIES => XSERIES
 		)	
@@ -201,7 +201,7 @@ begin
 			clk 	=> clk
 		); 
 		
-	RE_IM_MUL : entity work.fp23_mult_m2
+	RE_IM_MUL : entity work.fp23_mult
 		generic map ( 
 			XSERIES => XSERIES
 		)	
@@ -214,7 +214,7 @@ begin
 			clk 	=> clk
 		); 
 		
-	IM_RE_MUL : entity work.fp23_mult_m2
+	IM_RE_MUL : entity work.fp23_mult
 		generic map ( 
 			XSERIES => XSERIES
 		)	

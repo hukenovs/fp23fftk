@@ -110,19 +110,19 @@ MED_WW: if (11 < STAGE) generate
 	end generate;
 
 	X_TLR_YES: if (USE_SCALE = FALSE) generate
-		type complex_fp23xM is array (23 downto 0) of fp23_complex;
-		signal ww_ena 		: std_logic_vector(23 downto 0); 			
+		type complex_fp23xM is array (22 downto 0) of fp23_complex;
+		signal ww_ena 		: std_logic_vector(22 downto 0); 			
 		signal iaz 			: complex_fp23xM;
 		signal ibz 			: complex_fp23xM; 			
 	begin
-		ww_ena <= ww_ena(22 downto 0) & bfly_en when rising_edge(clk);	
+		ww_ena <= ww_ena(ww_ena'left-1 downto 0) & bfly_en when rising_edge(clk);	
 
-		iaz <= iaz(22 downto 0) & ia when rising_edge(clk);		
-		ibz <= ibz(22 downto 0) & ib when rising_edge(clk);		
+		iaz <= iaz(iaz'left-1 downto 0) & ia when rising_edge(clk);		
+		ibz <= ibz(ibz'left-1 downto 0) & ib when rising_edge(clk);		
 		
-		iax <= iaz(23);   	
-		ibx <= ibz(23);   	
-		bfly_enx <= ww_ena(23);		
+		iax <= iaz(iaz'left);   	
+		ibx <= ibz(ibz'left);   	
+		bfly_enx <= ww_ena(ww_ena'left);		
 	end generate;			
 end generate;	
 

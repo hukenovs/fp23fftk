@@ -159,14 +159,14 @@ xSTn: if (STAGE > 1) generate
 	signal re_x_im 		: fp23_data;
 	signal im_x_re 		: fp23_data;
 	
-	type complex_fp23x14 is array(14 downto 0) of fp23_complex;
+	type complex_fp23x14 is array(13 downto 0) of fp23_complex;
 	signal dt_ia_del 	: complex_fp23x14;
 	
 begin
 	dt_ia_del <= dt_ia_del(dt_ia_del'left-1 downto 0) & DT_IA when rising_edge(clk);
 	
 	-------- PROD = DT_IB * WW --------	
-	RE_RE_MUL : entity work.fp23_mult_m2
+	RE_RE_MUL : entity work.fp23_mult
 		generic map ( 
 			XSERIES => XSERIES
 		)	
@@ -180,7 +180,7 @@ begin
 			clk 	=> clk
 		); 
 		
-	IM_IM_MUL : entity work.fp23_mult_m2
+	IM_IM_MUL : entity work.fp23_mult
 		generic map ( 
 			XSERIES => XSERIES
 		)	
@@ -193,7 +193,7 @@ begin
 			clk 	=> clk
 		);	
 		
-	RE_IM_MUL : entity work.fp23_mult_m2
+	RE_IM_MUL : entity work.fp23_mult
 		generic map ( 
 			XSERIES => XSERIES
 		)	
@@ -206,7 +206,7 @@ begin
 			clk 	=> clk
 		);
 		
-	IM_RE_MUL : entity work.fp23_mult_m2
+	IM_RE_MUL : entity work.fp23_mult
 		generic map ( 
 			XSERIES => XSERIES
 		)	
@@ -290,7 +290,7 @@ begin
 	end generate; 
 	
 	
-	aw <= dt_ia_del(14);
+	aw <= dt_ia_del(dt_ia_del'left);
 	
 end generate;
 

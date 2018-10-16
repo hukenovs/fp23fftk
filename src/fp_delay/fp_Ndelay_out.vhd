@@ -55,7 +55,7 @@ entity fp_Ndelay_out is
 		dout_re		: out std_logic_vector(Nwidth-1 downto 0); --! Data Real
 		dout_im		: out std_logic_vector(Nwidth-1 downto 0); --! Data Imag
 		dout_val	: out std_logic; --! Data vaid
-							
+
 		clk  		: in  std_logic; --! Clock
 		reset 		: in  std_logic; --! Reset		
 		
@@ -83,7 +83,6 @@ signal din_imz2			: std_logic_vector(Nwidth-1 downto 0);
 signal ram_din			: std_logic_vector(2*Nwidth-1 downto 0);
 signal ram_dout			: std_logic_vector(2*Nwidth-1 downto 0);
 
-signal rstp				: std_logic;
 signal ena, enb			: std_logic;
 signal enaz				: std_logic;
 signal enbz				: std_logic; 
@@ -95,8 +94,6 @@ signal dat_ena			: std_logic:='0';
 
 begin
 
-rstp <= not reset when rising_edge(clk);	
-
 din_rez1 <= ca_re when rising_edge(clk);
 din_imz1 <= ca_im when rising_edge(clk);
 
@@ -107,7 +104,7 @@ din_imz2 <= din_imz1 when rising_edge(clk);
 pr_cnt: process(clk) is
 begin	
 	if rising_edge(clk) then
-		if (rstp = '1') then
+		if (reset = '1') then
 			cnt <= (0 => '1', others => '0');
 		else
 			if (din_en = '1') then
@@ -126,7 +123,7 @@ addra <= cnt(STAGES-2 downto 0)-1 when rising_edge(clk);
 pr_dat: process(clk) is
 begin	
 	if rising_edge(clk) then
-		if (rstp = '1') then
+		if (reset = '1') then
 			dat_ena <= '0';
 		else
 			if (cnt(STAGES-1) = '1') then
@@ -142,7 +139,7 @@ end process;
 pr_cnt2: process(clk) is
 begin
 	if rising_edge(clk) then
-		if (rstp = '1') then
+		if (reset = '1') then
 			addrb <= (0 => '1', others => '0');		
 		else
 			if (addrb(STAGES-1) = '1')then
@@ -188,7 +185,7 @@ begin
 	begin
 		if (clk'event and clk = '1') then
 			ram_dout <= dout;
-			if (rstp = '1') then
+			if (reset = '1') then
 				dout <= (others => '0');
 			else
 				if (enb = '1') then
