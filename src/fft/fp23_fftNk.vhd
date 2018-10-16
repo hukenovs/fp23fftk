@@ -31,8 +31,8 @@
 -------------------------------------------------------------------------------
 --
 --	The MIT License (MIT)
---	Copyright (c) 2016 Kapitanov Alexander 													 
---		                                          				 
+--	Copyright (c) 2016 Kapitanov Alexander
+--
 -- Permission is hereby granted, free of charge, to any person obtaining a copy 
 -- of this software and associated documentation files (the "Software"), 
 -- to deal in the Software without restriction, including without limitation 
@@ -51,7 +51,7 @@
 -- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
 -- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS 
 -- IN THE SOFTWARE.
--- 	                                                 
+--
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 library ieee;
@@ -67,10 +67,12 @@ use work.fp_m1_pkg.all;
 
 entity fp23_fftNk is
 	generic(
-		NFFT			: integer:=16;			--! Number of FFT stages
-		XSERIES			: string:="7SERIES";	--! FPGA family: for 6/7 series: "7SERIES"; for ULTRASCALE: "ULTRA";
-		USE_SCALE		: boolean:=false 		--! use full scale rambs for twiddle factor				
-		--USE_FLY			: boolean:=true			--! Use butterfly  
+		NFFT				: integer:=16;			--! Number of FFT stages
+		XSERIES				: string:="7SERIES";	--! FPGA family: for 6/7 series: "7SERIES"; for ULTRASCALE: "ULTRA";
+		USE_SCALE			: boolean:=FALSE;		--! use full scale rambs for twiddle factor
+		USE_MLT_FOR_ADDSUB	: boolean:=FALSE; --! Use DSP48E1/2 blocks or not for Add/Sub
+		USE_MLT_FOR_CMULT	: boolean:=FALSE; --! Use DSP48E1/2 blocks or not for Complex Mult
+		USE_MLT_FOR_TWDLS	: boolean:=FALSE  --! Use DSP48E1/2 blocks or not for Twiddles
 	);
 	port(
 		reset  			: in  std_logic;		--! Global reset 
@@ -92,8 +94,6 @@ architecture fp23_fftNk of fp23_fftNk is
 
 constant Nwidth	: integer:=(data_in0.re.exp'length+data_in0.re.man'length+1);
 constant Nman	: integer:=data_in0.re.man'length;	
-
-signal rstp				: std_logic;
 
 type complex_fp23xN 	is array (NFFT-1 downto 0) of fp23_complex;
 
@@ -128,8 +128,6 @@ signal do_bb 			: complex_WxN;
 signal coe_en			: std_logic_vector(NFFT-1 downto 0);
 
 begin
- 
-rstp <= not reset when rising_edge(clk);
 
 bfly_en(0) <= data_en;		 
 ia(0) <= data_in0;
@@ -146,19 +144,21 @@ begin
 	--xTRUE_FLY: if (USE_FLY = true) generate
 		BUTTERFLY: entity work.fp23_bfly_fwd
 			generic map (
-				STAGE		=> NFFT-1-ii,
-				XSERIES		=> XSERIES
+				USE_MLT_FOR_ADDSUB	=> USE_MLT_FOR_ADDSUB,
+				USE_MLT_FOR_CMULT	=> USE_MLT_FOR_CMULT,
+				STAGE				=> NFFT-1-ii,
+				XSERIES				=> XSERIES
 			)
 			port map(
-				dt_ia      => iax(ii), 
-				dt_ib      => ibx(ii),
-				di_en      => bfly_enx(ii),
-				ww         => ww(ii),
-				dt_oa      => oa1(ii), 
-				dt_ob      => ob1(ii),
-				do_vl      => bfly_vl1(ii),
-				reset      => reset, 
-				clk        => clk 	 
+				dt_ia      			=> iax(ii), 
+				dt_ib      			=> ibx(ii),
+				di_en      			=> bfly_enx(ii),
+				ww         			=> ww(ii),
+				dt_oa      			=> oa1(ii), 
+				dt_ob      			=> ob1(ii),
+				do_vl      			=> bfly_vl1(ii),
+				reset      			=> reset, 
+				clk        			=> clk 	 
 			); 
 			
 		COE_ROM: entity work.rom_twiddle_gen
@@ -166,6 +166,7 @@ begin
 				NFFT		=> NFFT,
 				STAGE		=> ii,
 				XSERIES		=> XSERIES,
+				USE_MLT		=> USE_MLT_FOR_TWDLS,
 				USE_SCALE	=> USE_SCALE
 			)
 			port map(
@@ -191,7 +192,7 @@ begin
 				bfly_enx	=> bfly_enx(ii),
 				coe_en		=> coe_en(ii)
 			);
-	--end generate;	
+
 	pr_xd: process(clk) is
 	begin
 		if rising_edge(clk) then
@@ -216,7 +217,7 @@ begin
 	di_bb(ii) <= (ob(ii).im.exp & ob(ii).im.sig & ob(ii).im.man & ob(ii).re.exp & ob(ii).re.sig & ob(ii).re.man);	
 	del_en(ii) <= bfly_vl(ii);
 	
-	DELAY_LINE : entity work.fp_delay_line_m1
+	DELAY_LINE : entity work.fp_delay_line
 		generic map(
 			Nwidth		=> 2*Nwidth,
 			NFFT		=> NFFT,
@@ -243,7 +244,7 @@ end generate;
 pr_out: process(clk) is
 begin
 	if rising_edge(clk) then
-		if (rstp = '1') then
+		if (reset = '1') then
 			dout_val <= '0';
 			dout0 <= (others => ("000000", '0', x"0000")); 
 			dout1 <= (others => ("000000", '0', x"0000")); 

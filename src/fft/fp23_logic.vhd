@@ -11,8 +11,8 @@
 -------------------------------------------------------------------------------
 --
 --	The MIT License (MIT)
---	Copyright (c) 2016 Kapitanov Alexander 													 
---		                                          				 
+--	Copyright (c) 2016 Kapitanov Alexander
+--
 -- Permission is hereby granted, free of charge, to any person obtaining a copy 
 -- of this software and associated documentation files (the "Software"), 
 -- to deal in the Software without restriction, including without limitation 
@@ -31,9 +31,10 @@
 -- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
 -- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS 
 -- IN THE SOFTWARE.
--- 	                                                 
+--
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
+
 library ieee;
 use ieee.std_logic_1164.all;  
 use ieee.std_logic_signed.all;
@@ -42,36 +43,39 @@ use ieee.std_logic_arith.all;
 use work.fp_m1_pkg.fp23_complex;
 
 use ieee.std_logic_textio.all;
-use std.textio.all;				
-	
-	
+use std.textio.all;
+
 entity fp23_logic is
 	generic (
-		TD				: time:=1ns; 			--! Time delay for simulation
-		USE_CONJ		: boolean:=TRUE;		--! Use conjugation for twiddle factor (COE)		
-		USE_PAIR		: boolean:=TRUE; 		--! Bitreverse mode: Even/Odd - "TRUE" or Half Pair - "FALSE". For FFT: "TRUE"	
-		USE_FWT			: boolean:=TRUE; 		--! Bitreverse mode: Even/Odd - "TRUE" or Half Pair - "FALSE". For FFT: "TRUE"	
-		XSERIES			: string:="7SERIES";	--! FPGA family: for 6/7 series: "7SERIES"; for ULTRASCALE: "ULTRA";
-		NFFT			: integer :=10			--! Number of FFT stages	
+		TD					: time:=1ns; 			--! Time delay for simulation
+		USE_SCALE			: boolean:=FALSE;		--! use full scale rambs for twiddle factor
+		USE_MLT_FOR_ADDSUB	: boolean:=TRUE; 		--! Use DSP48E1/2 blocks or not for Add/Sub
+		USE_MLT_FOR_CMULT	: boolean:=TRUE; 		--! Use DSP48E1/2 blocks or not for Complex Mult
+		USE_MLT_FOR_TWDLS	: boolean:=TRUE;  		--! Use DSP48E1/2 blocks or not for Twiddles
+		USE_CONJ			: boolean:=TRUE;		--! Use conjugation for twiddle factor (COE)
+		USE_PAIR			: boolean:=TRUE; 		--! Bitreverse mode: Even/Odd - "TRUE" or Half Pair - "FALSE". For FFT: "TRUE"	
+		USE_FWT				: boolean:=TRUE; 		--! Bitreverse mode: Even/Odd - "TRUE" or Half Pair - "FALSE". For FFT: "TRUE"	
+		XSERIES				: string:="ULTRA";	--! FPGA family: for 6/7 series: "7SERIES"; for ULTRASCALE: "ULTRA";
+		NFFT				: integer :=13			--! Number of FFT stages	
 	);														  
 	port (
-		use_fly			: in std_logic;						--! '1' - use bfly, '0' - don't use bfly
-		use_ifly		: in std_logic;						--! '1' - use bfly, '0' - don't use bfly
-		
-		reset			: in std_logic;						--! Global reset  															  
-		clk				: in std_logic;						--! DSP clock	           											  
+		use_fly				: in std_logic;						--! '1' - use bfly, '0' - don't use bfly
+		use_ifly			: in std_logic;						--! '1' - use bfly, '0' - don't use bfly
 
-		din_re			: in std_logic_vector(15 downto 0);	--! Re data input
-		din_im			: in std_logic_vector(15 downto 0);	--! Im data input
-		din_en			: in std_logic;						--! Data enable
-		
-		dt_rev			: in std_logic;						--! FFT Bitreverse
-		dt_mux			: in std_logic_vector(01 downto 0); --! Data mux: "01" - Input, "10" - FFT, "11" - IFFT
-		fpscale			: in std_logic_vector(05 downto 0); --! Scale in Float2Fix
+		reset				: in std_logic;						--! Global reset  															  
+		clk					: in std_logic;						--! DSP clock	           											  
 
-		d_re 			: out std_logic_vector(15 downto 0);--! Output data Even
-		d_im 			: out std_logic_vector(15 downto 0);--! Output data Odd		
-		d_vl			: out std_logic						--! Output valid data	
+		din_re				: in std_logic_vector(15 downto 0);	--! Re data input
+		din_im				: in std_logic_vector(15 downto 0);	--! Im data input
+		din_en				: in std_logic;						--! Data enable
+
+		dt_rev				: in std_logic;						--! FFT Bitreverse
+		dt_mux				: in std_logic_vector(01 downto 0); --! Data mux: "01" - Input, "10" - FFT, "11" - IFFT
+		fpscale				: in std_logic_vector(05 downto 0); --! Scale in Float2Fix
+
+		d_re 				: out std_logic_vector(15 downto 0);--! Output data Even
+		d_im 				: out std_logic_vector(15 downto 0);--! Output data Odd		
+		d_vl				: out std_logic						--! Output valid data	
 	);
 end fp23_logic;
 
@@ -131,7 +135,7 @@ rstn <= not reset when rising_edge(clk);
 		
 	
 -------------------- INPUT BUFFER --------------------
-xIN_BUF: entity work.fp_Ndelay_in_m1
+xIN_BUF: entity work.fp_Ndelay_in
 	generic map (
 		td			=> td,
 		STAGES 		=> NFFT,
@@ -153,7 +157,7 @@ xIN_BUF: entity work.fp_Ndelay_in_m1
 	);
 	
 -------------------- FIX to FLOAT CONVERSION (on DSP or LUT) --------------------	
-FIX0_IF: entity work.fp23_fix2float_m1 
+FIX0_IF: entity work.fp23_fix2float
 	port map(
 		din			=> ca_re,
 		ena			=> buf_en,
@@ -162,7 +166,7 @@ FIX0_IF: entity work.fp23_fix2float_m1
 		clk			=> clk,
 		reset		=> reset
 	);					
-FIX1_IF: entity work.fp23_fix2float_m1 
+FIX1_IF: entity work.fp23_fix2float
 	port map(
 		din			=> ca_im,
 		ena			=> buf_en,
@@ -171,7 +175,7 @@ FIX1_IF: entity work.fp23_fix2float_m1
 		clk			=> clk,
 		reset		=> reset
 	);	
-FIX2_IF: entity work.fp23_fix2float_m1 
+FIX2_IF: entity work.fp23_fix2float
 	port map(
 		din			=> cb_re,
 		ena			=> buf_en,
@@ -180,7 +184,7 @@ FIX2_IF: entity work.fp23_fix2float_m1
 		clk			=> clk,
 		reset		=> reset
 	);			
-FIX3_IF: entity work.fp23_fix2float_m1 
+FIX3_IF: entity work.fp23_fix2float
 	port map(
 		din			=> cb_im,
 		ena			=> buf_en,
@@ -193,21 +197,25 @@ FIX3_IF: entity work.fp23_fix2float_m1
 ------------------ FPFFTK_N (FORWARD FFT) --------------------		
 xFFT: entity work.fp23_fftNk
 	generic map (					
-		NFFT		=> NFFT,				
-		XSERIES		=> XSERIES
+		NFFT				=> NFFT,				
+		USE_MLT_FOR_ADDSUB	=> USE_MLT_FOR_ADDSUB,	
+		USE_MLT_FOR_CMULT	=> USE_MLT_FOR_CMULT,
+		USE_MLT_FOR_TWDLS	=> USE_MLT_FOR_TWDLS,
+		USE_SCALE			=> USE_SCALE,
+		XSERIES				=> XSERIES
 	)
-	port map(
-		data_in0	=> din0_fft,
-		data_in1	=> din1_fft,
-		data_en		=> fft_en,
+	port map (
+		data_in0			=> din0_fft,
+		data_in1			=> din1_fft,
+		data_en				=> fft_en,
     
-		dout0 		=> dout0_fft,
-		dout1 		=> dout1_fft,
-		dout_val	=> fft_vl,
+		dout0 				=> dout0_fft,
+		dout1 				=> dout1_fft,
+		dout_val			=> fft_vl,
 		
-		use_fly		=> use_fly,
-		reset  		=> reset, 
-		clk 		=> clk
+		use_fly				=> use_fly,
+		reset  				=> reset, 
+		clk 				=> clk
 	);
  	
 ------------------ TEST IFFT MUX --------------------
@@ -217,22 +225,26 @@ ifft_en		<= fft_vl;
 
 xIFFT: entity work.fp23_ifftNk
 	generic map (
-		NFFT		=> NFFT,
-		XSERIES		=> XSERIES,		
-		USE_CONJ	=> USE_CONJ	
+		NFFT				=> NFFT,
+		USE_MLT_FOR_ADDSUB	=> USE_MLT_FOR_ADDSUB,	
+		USE_MLT_FOR_CMULT	=> USE_MLT_FOR_CMULT,
+		USE_MLT_FOR_TWDLS	=> USE_MLT_FOR_TWDLS,
+		USE_SCALE			=> USE_SCALE,
+		USE_CONJ			=> USE_CONJ,
+		XSERIES				=> XSERIES	
 	)
 	port map(
-		data_in0	=> din0_ifft,
-		data_in1	=> din1_ifft,
-		data_en		=> ifft_en, 
+		data_in0			=> din0_ifft,
+		data_in1			=> din1_ifft,
+		data_en				=> ifft_en, 
 		
-		dout0 		=> dout0_ifft,
-		dout1 		=> dout1_ifft,
-		dout_val	=> ifft_val,
+		dout0 				=> dout0_ifft,
+		dout1 				=> dout1_ifft,
+		dout_val			=> ifft_val,
 		
-		use_fly		=> use_ifly,
-		reset  		=> reset, 
-		clk 		=> clk
+		use_fly				=> use_ifly,
+		reset  				=> reset, 
+		clk 				=> clk
 	); 		
 	
 ------------------ MUX xDATA --------------------
@@ -263,7 +275,7 @@ begin
 end process;	
 	
 ------------------ FLOAT2FIX --------------------		
-xFIX0RE: entity work.fp23_float2fix_m1
+xFIX0RE: entity work.fp23_float2fix
 	port map (
 		din			=> dout0_mux.re,	
 		dout		=> fix_dout0_re,
@@ -275,7 +287,7 @@ xFIX0RE: entity work.fp23_float2fix_m1
 		overflow	=> over(0)                                       			
 	);	
 		
-xFIX1RE: entity work.fp23_float2fix_m1
+xFIX1RE: entity work.fp23_float2fix
 	port map (
 		din			=> dout1_mux.re,	
 		dout		=> fix_dout1_re,
@@ -287,7 +299,7 @@ xFIX1RE: entity work.fp23_float2fix_m1
 		overflow	=> over(2)                                       			
 	);	
 	
-xFIX0IM: entity work.fp23_float2fix_m1
+xFIX0IM: entity work.fp23_float2fix
 	port map (
 		din			=> dout0_mux.im,	
 		dout		=> fix_dout0_im,
@@ -299,7 +311,7 @@ xFIX0IM: entity work.fp23_float2fix_m1
 		overflow	=> over(1)                                       			
 	);	
 			
-xFIX1IM: entity work.fp23_float2fix_m1
+xFIX1IM: entity work.fp23_float2fix
 	port map (
 		din			=> dout1_mux.im,	
 		dout		=> fix_dout1_im,
@@ -388,28 +400,20 @@ begin
 end process;	
 		
 --------------------------------------------------------------------------------
---writing_dout: process(clk) is    -- write file_io.out (++ done goes to '1')
---	file log 					: TEXT open WRITE_MODE is "C:\share\fpfftk\rtl_half.dat";
---	variable str 				: LINE;
---	variable spc 				: string(1 to 4) := (others => ' ');
---	variable cnt 				: integer range -1 to 1600000000;	
---begin
---	if rising_edge(clk) then
---		if reset = '0' then
---			cnt := -1;		
---		elsif val(0) = '1' then
---			cnt := cnt + 1;	
---			--------------------------------
---			write(str, CONV_INTEGER(SIGNED(fix_dout0_re)), LEFT); write(str, spc);
---			write(str, CONV_INTEGER(SIGNED(fix_dout0_im)), LEFT); write(str, spc);	
---			write(str, CONV_INTEGER(SIGNED(fix_dout1_re)), LEFT); write(str, spc);	
---			write(str, CONV_INTEGER(SIGNED(fix_dout1_im)), LEFT); write(str, spc);				
---			--------------------------------
---			writeline(log, str);
---		else
---			null;
---		end if;
---	end if;
---end process; 		
+-- writing_dout: process(clk) is    -- write file_io.out (++ done goes to '1')
+	-- file log 					: TEXT open WRITE_MODE is "../../../../../../math/fft_out.dat";
+	-- variable str 				: LINE;
+	-- variable spc 				: string(1 to 4) := (others => ' ');	
+-- begin
+	-- if rising_edge(clk) then
+		-- if (dout_en = '1') then	
+			-- --------------------------------
+			-- write(str, CONV_INTEGER(SIGNED(dout_re)), LEFT); write(str, spc);
+			-- write(str, CONV_INTEGER(SIGNED(dout_im)), LEFT); write(str, spc);
+			-- --------------------------------
+			-- writeline(log, str);
+		-- end if;
+	-- end if;
+-- end process; 		
 	
 end fp23_logic;

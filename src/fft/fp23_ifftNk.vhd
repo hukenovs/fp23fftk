@@ -63,12 +63,13 @@ use work.fp_m1_pkg.all;
 
 entity fp23_ifftNk is
 	generic(
-		NFFT			: integer:=10;			--! Number of FFT stages   
-		XSERIES			: string:="7SERIES";	--! FPGA family: for 6/7 series: "7SERIES"; for ULTRASCALE: "ULTRA";
-		USE_DSP			: boolean:=false; 		--! use DSP48 for calculation PI * CNT
-		USE_SCALE		: boolean:=false; 		--! use full scale rambs for twiddle factor
-		USE_CONJ		: boolean:=false		--! Use conjugation for the butterfly
-		--USE_FLY			: boolean:=true			--! Use butterfly
+		NFFT				: integer:=10;			--! Number of FFT stages   
+		XSERIES				: string:="7SERIES";	--! FPGA family: for 6/7 series: "7SERIES"; for ULTRASCALE: "ULTRA";
+		USE_SCALE			: boolean:=FALSE; 		--! use full scale rambs for twiddle factor
+		USE_CONJ			: boolean:=FALSE;		--! Use conjugation for the butterfly
+		USE_MLT_FOR_ADDSUB	: boolean:=FALSE; --! Use DSP48E1/2 blocks or not for Add/Sub
+		USE_MLT_FOR_CMULT	: boolean:=FALSE; --! Use DSP48E1/2 blocks or not for Complex Mult
+		USE_MLT_FOR_TWDLS	: boolean:=FALSE  --! Use DSP48E1/2 blocks or not for Twiddles	
 	);		
 	port(
 		reset  			: in  std_logic;		--! Global reset 
@@ -143,20 +144,22 @@ begin
 
 	BUTTERFLY: entity work.fp23_ibfly_inv
 		generic map (
-			STAGE		=> ii,
-			XSERIES		=> XSERIES,
-			USE_CONJ	=> use_conj
+			USE_MLT_FOR_ADDSUB	=> USE_MLT_FOR_ADDSUB,
+			USE_MLT_FOR_CMULT	=> USE_MLT_FOR_CMULT,			
+			STAGE				=> ii,
+			XSERIES				=> XSERIES,
+			USE_CONJ			=> use_conj
 		)
 		port map(
-			dt_ia      => iax(ii), 
-			dt_ib      => ibx(ii),
-			di_en      => bfly_enx(ii),
-			ww         => ww(ii),
-			dt_oa      => oa1(ii), 
-			dt_ob      => ob1(ii),
-			do_vl      => bfly_vl1(ii),
-			reset  		=> reset,
-			clk 		=> clk
+			dt_ia      			=> iax(ii), 
+			dt_ib      			=> ibx(ii),
+			di_en      			=> bfly_enx(ii),
+			ww         			=> ww(ii),
+			dt_oa      			=> oa1(ii), 
+			dt_ob      			=> ob1(ii),
+			do_vl      			=> bfly_vl1(ii),
+			reset  				=> reset,
+			clk 				=> clk
 		);
 
 
@@ -165,6 +168,7 @@ begin
 			NFFT		=> NFFT,
 			STAGE		=> NFFT-1-ii,
 			XSERIES		=> XSERIES,
+			USE_MLT		=> USE_MLT_FOR_TWDLS,			
 			USE_SCALE	=> USE_SCALE
 		)
 		port map(
@@ -208,7 +212,6 @@ begin
 	end process;
 	
 end generate;
-
 
 DELAY_STAGE: for ii in 0 to NFFT-2 generate 	
 	di_aa(ii) <= (oa(ii).im.exp & oa(ii).im.sig & oa(ii).im.man & oa(ii).re.exp & oa(ii).re.sig & oa(ii).re.man);	
