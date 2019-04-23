@@ -11,57 +11,57 @@
 --
 -------------------------------------------------------------------------------
 --
---	Version 1.0  25.05.2013
---			   	 Description:
---					Bus width for:
---					din = 15
---					dout = 23	
--- 					exp = 6
--- 					sign = 1
--- 					mant = 15 + 1
---				 Math expression: 
---					A = (-1)^sign(A) * 2^(exp(A)-31) * mant(A)
---				 NB:
---				 1's complement
---				 Converting from fixed to float takes only 9 clock cycles
+--  Version 1.0  25.05.2013
+--               Description:
+--                  Bus width for:
+--                  din = 15
+--                  dout = 23   
+--                  exp = 6
+--                  sign = 1
+--                  mant = 15 + 1
+--               Math expression: 
+--                  A = (-1)^sign(A) * 2^(exp(A)-31) * mant(A)
+--               NB:
+--               1's complement
+--               Converting from fixed to float takes only 9 clock cycles
 --
---	MODES: 	Mode0	: normal fix2float (1's complement data)
---			Mode1	: +1 fix2float for negative data (uncomment and 
---					change this code a little: add a component 
--- 					sp_addsub_m1 and some signals): 2's complement data.
---	
+--  MODES:  Mode0   : normal fix2float (1's complement data)
+--          Mode1   : +1 fix2float for negative data (uncomment and 
+--                  change this code a little: add a component 
+--                  sp_addsub_m1 and some signals): 2's complement data.
+--  
 --
---	Version 1.1  15.01.2015
---			   	 Description:
---					Based on fp27_fix2float_m3 (FP27 FORMAT)
---					New version of FP (Reduced fraction width)
---	
---	Version 1.2  18.03.2015
---			   	 Description:
---					Changed CE signal
---					This version has ena. See OR5+OR5 stages
+--  Version 1.1  15.01.2015
+--               Description:
+--                  Based on fp27_fix2float_m3 (FP27 FORMAT)
+--                  New version of FP (Reduced fraction width)
+--  
+--  Version 1.2  18.03.2015
+--               Description:
+--                  Changed CE signal
+--                  This version has ena. See OR5+OR5 stages
 --
---	Version 1.3  24.03.2015
---			   	 Description:
---					Deleted ENABLE signal
---					This version is fully pipelined !!!
+--  Version 1.3  24.03.2015
+--               Description:
+--                  Deleted ENABLE signal
+--                  This version is fully pipelined !!!
 --
---	Version 1.4  04.10.2015
---			   	 Description:
---					DSP48E1 has been removed. Barrel shift is used now.
---					Delay 9 clocks
---							 
---	Version 1.5  04.01.2016
---			   	 Description:
---					New barrel shifter with minimum resources. 
---					New FP format: FP24 -> FP23.
+--  Version 1.4  04.10.2015
+--               Description:
+--                  DSP48E1 has been removed. Barrel shift is used now.
+--                  Delay 9 clocks
+--                           
+--  Version 1.5  04.01.2016
+--               Description:
+--                  New barrel shifter with minimum resources. 
+--                  New FP format: FP24 -> FP23.
 --
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 --
---	The MIT License (MIT)
---	Copyright (c) 2016 Kapitanov Alexander 													 
---		                                          				 
+--  The MIT License (MIT)
+--  Copyright (c) 2016 Kapitanov Alexander                                                   
+--                                                               
 -- Permission is hereby granted, free of charge, to any person obtaining a copy 
 -- of this software and associated documentation files (the "Software"), 
 -- to deal in the Software without restriction, including without limitation 
@@ -80,7 +80,7 @@
 -- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
 -- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS 
 -- IN THE SOFTWARE.
--- 	                                                 
+--                                                   
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 library ieee;
@@ -93,41 +93,41 @@ use work.fp_m1_pkg.fp23_data;
 use work.reduce_pack.nor_reduce;
 
 entity fp23_fix2float is
-	port(
-		din			: in  std_logic_vector(15 downto 0);	--! Fixed input data					
-		ena			: in  std_logic;						--! Data enable 		
-		dout		: out fp23_data;						--! Float output data
-		vld			: out std_logic;						--! Data out valid      
-		clk			: in  std_logic;						--! Clock            
-		reset		: in  std_logic							--! Negative Reset            
-	);
+    port(
+        din         : in  std_logic_vector(15 downto 0); --! Fixed input data                    
+        ena         : in  std_logic;                     --! Data enable         
+        dout        : out fp23_data;                     --! Float output data
+        vld         : out std_logic;                     --! Data out valid      
+        clk         : in  std_logic;                     --! Clock            
+        reset       : in  std_logic                         --! Negative Reset            
+    );
 end fp23_fix2float;
 
 architecture fp23_fix2float of fp23_fix2float is 
 
-constant FP32_EXP		: std_logic_vector(5 downto 0):="011111";
+constant FP32_EXP       : std_logic_vector(5 downto 0):="011111";
 
-signal true_form		: std_logic_vector(15 downto 0):=(others => '0');	
-signal norm				: std_logic_vector(15 downto 0);	
-signal frac           	: std_logic_vector(15 downto 0);	
+signal true_form        : std_logic_vector(15 downto 0):=(others => '0');
+signal norm             : std_logic_vector(15 downto 0); 
+signal frac             : std_logic_vector(15 downto 0); 
 
-signal set_zero			: std_logic;
+signal set_zero         : std_logic;
 
-signal sum_man		    : std_logic_vector(15 downto 0);
-signal msb_num			: std_logic_vector(4 downto 0);
-signal msb_numn			: std_logic_vector(5 downto 0);
+signal sum_man          : std_logic_vector(15 downto 0);
+signal msb_num          : std_logic_vector(4 downto 0);
+signal msb_numn         : std_logic_vector(5 downto 0);
 
-signal msb_numt			: std_logic_vector(4 downto 0);
-signal msb_numz			: std_logic_vector(5 downto 0);
-signal expc				: std_logic_vector(5 downto 0); -- (E - 127) by (IEEE754)
+signal msb_numt         : std_logic_vector(4 downto 0);
+signal msb_numz         : std_logic_vector(5 downto 0);
+signal expc             : std_logic_vector(5 downto 0); -- (E - 127) by (IEEE754)
 
-signal sign				: std_logic_vector(2 downto 0);
-signal valid			: std_logic_vector(4 downto 0);
+signal sign             : std_logic_vector(2 downto 0);
+signal valid            : std_logic_vector(4 downto 0);
 
---signal dinz			: std_logic_vector(15 downto 0);
+--signal dinz           : std_logic_vector(15 downto 0);
 signal dinz             : std_logic_vector(15 downto 0);
-signal dinh				: std_logic;
-signal dinx				: std_logic;
+signal dinh             : std_logic;
+signal dinx             : std_logic;
 
 
 begin
@@ -135,47 +135,47 @@ begin
 -- x2S_COMPL: if (IS_CMPL = TRUE) generate
 pr_sgn: process(clk) is
 begin
-	if rising_edge(clk) then
-		dinz <= din - din(15);
-		dinh <= din(15);
-	end if;
-end process;   
+    if rising_edge(clk) then
+        dinz <= din - din(15);
+        dinh <= din(15);
+    end if;
+end process;
 
 ---- make abs(data) by using XOR ----
 pr_abs: process(clk) is
 begin
-	if rising_edge(clk) then
-		true_form(15) <= dinz(15) or dinh;
-		for ii in 0 to 14 loop
-			true_form(ii) <= dinz(ii) xor (dinz(15) or dinh);
-		end loop;
-	end if;
-end process;	
+    if rising_edge(clk) then
+        true_form(15) <= dinz(15) or dinh;
+        for ii in 0 to 14 loop
+            true_form(ii) <= dinz(ii) xor (dinz(15) or dinh);
+        end loop;
+    end if;
+end process; 
 
 sum_man <= true_form(14 downto 0) & '0'  when rising_edge(clk);
 
 ---- find MSB (highest '1' position) ----
 pr_lead: process(clk) is
 begin 
-	if rising_edge(clk) then 
-		if    (true_form(14-00)='1') then msb_num <= "00001";--"00010";--"00001";
-		elsif (true_form(14-01)='1') then msb_num <= "00010";--"00011";--"00010";
-		elsif (true_form(14-02)='1') then msb_num <= "00011";--"00100";--"00011";
-		elsif (true_form(14-03)='1') then msb_num <= "00100";--"00101";--"00100";
-		elsif (true_form(14-04)='1') then msb_num <= "00101";--"00110";--"00101";
-		elsif (true_form(14-05)='1') then msb_num <= "00110";--"00111";--"00110";
-		elsif (true_form(14-06)='1') then msb_num <= "00111";--"01000";--"00111";
-		elsif (true_form(14-07)='1') then msb_num <= "01000";--"01001";--"01000";
-		elsif (true_form(14-08)='1') then msb_num <= "01001";--"01010";--"01001";
-		elsif (true_form(14-09)='1') then msb_num <= "01010";--"01011";--"01010";
-		elsif (true_form(14-10)='1') then msb_num <= "01011";--"01100";--"01011";
-		elsif (true_form(14-11)='1') then msb_num <= "01100";--"01101";--"01100";
-		elsif (true_form(14-12)='1') then msb_num <= "01101";--"01110";--"01101";
-		elsif (true_form(14-13)='1') then msb_num <= "01110";--"01111";--"01110";
-		elsif (true_form(14-14)='1') then msb_num <= "01111";--"10000";--"01111";	
-		else msb_num <= "00000";
-		end if;	
-	end if;
+    if rising_edge(clk) then 
+        if    (true_form(14-00)='1') then msb_num <= "00001";--"00010";--"00001";
+        elsif (true_form(14-01)='1') then msb_num <= "00010";--"00011";--"00010";
+        elsif (true_form(14-02)='1') then msb_num <= "00011";--"00100";--"00011";
+        elsif (true_form(14-03)='1') then msb_num <= "00100";--"00101";--"00100";
+        elsif (true_form(14-04)='1') then msb_num <= "00101";--"00110";--"00101";
+        elsif (true_form(14-05)='1') then msb_num <= "00110";--"00111";--"00110";
+        elsif (true_form(14-06)='1') then msb_num <= "00111";--"01000";--"00111";
+        elsif (true_form(14-07)='1') then msb_num <= "01000";--"01001";--"01000";
+        elsif (true_form(14-08)='1') then msb_num <= "01001";--"01010";--"01001";
+        elsif (true_form(14-09)='1') then msb_num <= "01010";--"01011";--"01010";
+        elsif (true_form(14-10)='1') then msb_num <= "01011";--"01100";--"01011";
+        elsif (true_form(14-11)='1') then msb_num <= "01100";--"01101";--"01100";
+        elsif (true_form(14-12)='1') then msb_num <= "01101";--"01110";--"01101";
+        elsif (true_form(14-13)='1') then msb_num <= "01110";--"01111";--"01110";
+        elsif (true_form(14-14)='1') then msb_num <= "01111";--"10000";--"01111";
+        else msb_num <= "00000";
+        end if; 
+    end if;
 end process;
 
 dinx <= dinz(15) xor dinh when rising_edge(clk);
@@ -192,31 +192,31 @@ set_zero <= nor_reduce(msb_numz) when rising_edge(clk);
 ---- find exponent (inv msb - x"2E") ---- 
 pr_sub: process(clk) is 
 begin
-	if rising_edge(clk) then
-		if (set_zero = '1') then
-			expc <= (others=>'0');
-		else
-			expc <= FP32_EXP - msb_numt;
-		end if;
-	end if;
-end process;	
-	
+    if rising_edge(clk) then
+        if (set_zero = '1') then
+            expc <= (others=>'0');
+        else
+            expc <= FP32_EXP - msb_numt;
+        end if;
+    end if;
+end process; 
+    
 ---- sign delay ----
 sign <= sign(sign'left-1 downto 0) & true_form(15) when rising_edge(clk);
    
 ---- output data ---- 
 pr_out: process(clk) is 
 begin
-	if rising_edge(clk) then
-		if (reset = '1') then
-			dout <= ("000000", '0', x"0000");
-		elsif (valid(valid'left) = '1') then
-			dout <= (expc, sign(sign'left), frac);
-		end if;
-	end if;
+    if rising_edge(clk) then
+        if (reset = '1') then
+            dout <= ("000000", '0', x"0000");
+        elsif (valid(valid'left) = '1') then
+            dout <= (expc, sign(sign'left), frac);
+        end if;
+    end if;
 end process; 
 
-valid <= valid(valid'left-1 downto 0) & ena when rising_edge(clk);	
+valid <= valid(valid'left-1 downto 0) & ena when rising_edge(clk);  
 vld <= valid(valid'left) when rising_edge(clk);
 
 end fp23_fix2float;
