@@ -16,13 +16,13 @@
 --          Wsin(x) = sin(x)-cos(x)*pi*cnt(x)/NFFT;
 --
 --          * where pi is 
---              ii = 01 -> x"239220"; -- 008K FFT    
---              ii = 02 -> x"229220"; -- 016K FFT   
+--              ii = 01 -> x"239220"; -- 008K FFT
+--              ii = 02 -> x"229220"; -- 016K FFT
 --              ii = 04 -> x"219220"; -- 032K FFT
 --              ii = 08 -> x"209220"; -- 064K FFT
 --              ii = 16 -> x"1F9220"; -- 128K FFT
 --              ii = 32 -> x"1E9220"; -- 256K FFT
---              ii = 64 -> x"1D9220"; -- 512K FFT   
+--              ii = 64 -> x"1D9220"; -- 512K FFT
 --
 --          RAMB (Width * Depth) is constant value and equals 48x1K,
 -- 
@@ -36,7 +36,7 @@
 --
 --  The MIT License (MIT)
 --  Copyright (c) 2016 Kapitanov Alexander                                                   
---                                                               
+--
 -- Permission is hereby granted,free of charge,to any person obtaining a copy 
 -- of this software and associated documentation files (the "Software"),
 -- to deal in the Software without restriction,including without limitation 
@@ -55,7 +55,7 @@
 -- LIABILITY,WHETHER IN AN ACTION OF CONTRACT,TORT OR OTHERWISE,ARISING FROM,
 -- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS 
 -- IN THE SOFTWARE.
---                                                
+--
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 library IEEE;
@@ -96,7 +96,7 @@ begin
         when 3 => return x"209220"; -- 64K
         when 4 => return x"1F9220"; -- 128K
         when 5 => return x"1E9220"; -- 256K
-        when 6 => return x"1D9220"; -- 512K     
+        when 6 => return x"1D9220"; -- 512K
         when others => return x"000000";
     end case;
 end;
