@@ -63,7 +63,7 @@ library work;
 use work.fp_m1_pkg.all;
 
 entity fp23_fftNk is
-    generic(
+    generic (
         NFFT                : integer:=16;          --! Number of FFT stages
         XSERIES             : string:="7SERIES";    --! FPGA family: for 6/7 series: "7SERIES"; for ULTRASCALE: "ULTRA";
         USE_SCALE           : boolean:=FALSE;       --! use full scale rambs for twiddle factor
@@ -71,7 +71,7 @@ entity fp23_fftNk is
         USE_MLT_FOR_CMULT   : boolean:=FALSE; --! Use DSP48E1/2 blocks or not for Complex Mult
         USE_MLT_FOR_TWDLS   : boolean:=FALSE  --! Use DSP48E1/2 blocks or not for Twiddles
     );
-    port(
+    port (
         reset           : in  std_logic;        --! Global reset 
         clk             : in  std_logic;        --! System clock 
     
@@ -87,7 +87,7 @@ entity fp23_fftNk is
     );
 end fp23_fftNk;
 
-architecture fp23_fftNk of fp23_fftNk is    
+architecture fp23_fftNk of fp23_fftNk is
 
 constant Nwidth : integer:=(data_in0.re.exp'length+data_in0.re.man'length+1);
 constant Nman   : integer:=data_in0.re.man'length;  
@@ -95,47 +95,47 @@ constant Nman   : integer:=data_in0.re.man'length;
 type complex_fp23xN     is array (NFFT-1 downto 0) of fp23_complex;
 
 signal ia               : complex_fp23xN;
-signal ib               : complex_fp23xN; 
+signal ib               : complex_fp23xN;
 signal iax              : complex_fp23xN;
-signal ibx              : complex_fp23xN; 
+signal ibx              : complex_fp23xN;
 
 signal oa               : complex_fp23xN;
-signal ob               : complex_fp23xN; 
+signal ob               : complex_fp23xN;
 signal oa1              : complex_fp23xN;
-signal ob1              : complex_fp23xN; 
-signal oa2              : complex_fp23xN;
-signal ob2              : complex_fp23xN; 
+signal ob1              : complex_fp23xN;
+--signal oa2              : complex_fp23xN;
+--signal ob2              : complex_fp23xN;
 
-signal ww               : complex_fp23xN;   
+signal ww               : complex_fp23xN;
 
 signal bfly_en          : std_logic_vector(NFFT-1 downto 0); 
 signal bfly_enx         : std_logic_vector(NFFT-1 downto 0);
 signal bfly_vl          : std_logic_vector(NFFT-1 downto 0);
 signal bfly_vl1         : std_logic_vector(NFFT-1 downto 0);
-signal bfly_vl2         : std_logic_vector(NFFT-1 downto 0);
+--signal bfly_vl2         : std_logic_vector(NFFT-1 downto 0);
 signal del_en           : std_logic_vector(NFFT-2 downto 0);
 signal del_vl           : std_logic_vector(NFFT-2 downto 0);   
 
 type complex_WxN is array (NFFT-2 downto 0) of std_logic_vector(2*Nwidth-1 downto 0);
 signal di_aa            : complex_WxN;
-signal di_bb            : complex_WxN;  
+signal di_bb            : complex_WxN;
 signal do_aa            : complex_WxN;
-signal do_bb            : complex_WxN; 
+signal do_bb            : complex_WxN;
 
 signal coe_en           : std_logic_vector(NFFT-1 downto 0);
 
 begin
 
-bfly_en(0) <= data_en;       
+bfly_en(0) <= data_en;
 ia(0) <= data_in0;
 ib(0) <= data_in1;
 
-CALC_STAGE: for ii in 0 to NFFT-1 generate  
+CALC_STAGE: for ii in 0 to NFFT-1 generate
 begin           
     --xFALSE_FLY: if (USE_FLY = false) generate
-        oa2(ii)      <= ia(ii);     
-        ob2(ii)      <= ib(ii); 
-        bfly_vl2(ii) <= bfly_en(ii);
+        --oa2(ii)      <= ia(ii);
+        --ob2(ii)      <= ib(ii); 
+        --bfly_vl2(ii) <= bfly_en(ii);
     --end generate;
     
     --xTRUE_FLY: if (USE_FLY = true) generate
@@ -146,27 +146,27 @@ begin
                 STAGE               => NFFT-1-ii,
                 XSERIES             => XSERIES
             )
-            port map(
-                dt_ia               => iax(ii), 
-                dt_ib               => ibx(ii),
-                di_en               => bfly_enx(ii),
-                ww                  => ww(ii),
-                dt_oa               => oa1(ii), 
-                dt_ob               => ob1(ii),
-                do_vl               => bfly_vl1(ii),
+            port map (
+                DT_IA               => iax(ii), 
+                DT_IB               => ibx(ii),
+                DI_EN               => bfly_enx(ii),
+                DT_WW               => ww(ii),
+                DT_OA               => oa1(ii), 
+                DT_OB               => ob1(ii),
+                DO_VL               => bfly_vl1(ii),
                 reset               => reset, 
                 clk                 => clk   
             ); 
             
         COE_ROM: entity work.rom_twiddle_gen
-            generic map(        
+            generic map (        
                 NFFT        => NFFT,
                 STAGE       => ii,
                 XSERIES     => XSERIES,
                 USE_MLT     => USE_MLT_FOR_TWDLS,
                 USE_SCALE   => USE_SCALE
             )
-            port map(
+            port map (
                 ww          => ww(ii),
                 clk         => clk,
                 ww_ena      => coe_en(ii),
@@ -181,32 +181,18 @@ begin
             )
             port map (  
                 clk         => clk,
-                ia          => ia(ii),
-                ib          => ib(ii),
-                iax         => iax(ii),
-                ibx         => ibx(ii),
-                bfly_en     => bfly_en(ii),
-                bfly_enx    => bfly_enx(ii),
-                coe_en      => coe_en(ii)
+                dt_ia       => ia(ii),
+                dt_ib       => ib(ii),
+                dt_xa       => iax(ii),
+                dt_xb       => ibx(ii),
+                fl_en       => bfly_en(ii),
+                fl_vl       => bfly_enx(ii),
+                tw_vl       => coe_en(ii)
             );
 
     bfly_vl(ii) <= bfly_vl1(ii);
-    oa(ii) <= oa1(ii); 
-    ob(ii) <= ob1(ii); 
-    --pr_xd: process(clk) is
-    --begin
-    --    if rising_edge(clk) then
-    --        if (use_fly = '1') then
-    --            bfly_vl(ii) <= bfly_vl1(ii);
-    --            oa(ii) <= oa1(ii);
-    --            ob(ii) <= ob1(ii);
-    --        else        
-    --            bfly_vl(ii) <= bfly_vl2(ii);
-    --            oa(ii) <= oa2(ii);
-    --            ob(ii) <= ob2(ii);
-    --        end if;
-    --    end if;
-    --end process;
+    oa(ii) <= oa1(ii);
+    ob(ii) <= ob1(ii);
 end generate;
 
 DELAY_STAGE: for ii in 0 to NFFT-2 generate
@@ -216,7 +202,7 @@ begin
     del_en(ii) <= bfly_vl(ii);
     
     DELAY_LINE : entity work.fp_delay_line
-        generic map(
+        generic map (
             Nwidth      => 2*Nwidth,
             NFFT        => NFFT,
             stage       => ii

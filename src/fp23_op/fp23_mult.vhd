@@ -290,10 +290,10 @@ xULTRA: if (XSERIES = "ULTRA") generate
             RSTB                => reset,
             RSTC                => reset,
             RSTCTRL             => reset,
-            RSTD                => reset, 
+            RSTD                => reset,
             RSTINMODE           => reset,
             RSTM                => reset,
-            RSTP                => reset 
+            RSTP                => reset
        );
 end generate;       
 
@@ -313,7 +313,6 @@ begin
     end if;
 end process;
 
- 
 -- find sign as xor of signs --
 pr_sign: process(clk) is
 begin
@@ -337,7 +336,7 @@ end process;
 
 -- data out and result --   
 --exp_underflowz <= (exp_underflow and exp_zeroz) when rising_edge(clk);
-exp_underflowz <= (exp_zeroz) when rising_edge(clk);
+exp_underflowz <= exp_zeroz when rising_edge(clk);
 
 pr_dout: process(clk) is
 begin       
@@ -350,7 +349,7 @@ begin
     end if;
 end process;    
 
-enaz <= enaz(2 downto 0) & enable when rising_edge(clk);
+enaz  <= enaz(2 downto 0) & enable when rising_edge(clk);
 valid <= enaz(3) when rising_edge(clk);
 
 end fp23_mult;

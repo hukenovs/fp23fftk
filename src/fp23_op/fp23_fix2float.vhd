@@ -217,6 +217,16 @@ begin
 end process; 
 
 valid <= valid(valid'left-1 downto 0) & ena when rising_edge(clk);  
-vld <= valid(valid'left) when rising_edge(clk);
+pr_vld: process(clk) is 
+begin
+    if rising_edge(clk) then
+        if (reset = '1') then
+            vld <= '0';
+        else
+            vld <= valid(valid'left);
+        end if;
+    end if;
+end process;
+
 
 end fp23_fix2float;

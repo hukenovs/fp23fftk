@@ -5,7 +5,7 @@
 -- Author      : Kapitanov
 -- Company     :
 --
--- Description : FP logic
+-- Description : FP logic: test FFT, IFFT, FFT + IFFT in FP23 format
 --
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
@@ -13,7 +13,7 @@
 --  The MIT License (MIT)
 --  Copyright (c) 2016 Kapitanov Alexander
 --
--- Permission is hereby granted, free of charge, to any person obtaining a copy 
+-- Permission is hereby granted, free of charge, to any person obtaining a copy
 -- of this software and associated documentation files (the "Software"), 
 -- to deal in the Software without restriction, including without limitation 
 -- the rights to use, copy, modify, merge, publish, distribute, sublicense, 
@@ -28,7 +28,7 @@
 -- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
 -- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL 
 -- THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
--- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
+-- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 -- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS 
 -- IN THE SOFTWARE.
 --
@@ -44,7 +44,7 @@ use std.textio.all;
 
 use work.fp_m1_pkg.all;
 
-entity fp_test is 
+entity fp_test is
 
 end fp_test;
 
@@ -52,18 +52,18 @@ architecture fp_test of fp_test is
 
 -- ******************************** --
 -- CHANGE STAGES TO EDIT FFT TEST!! --
-constant    NFFT            : integer:=8; 
-constant    SCALE           : std_logic_vector(5 downto 0):="011100";
-constant    USE_FLY         : std_logic:='1';
-constant    USE_IFLY        : std_logic:='1';   
-constant    DT_MUX          : std_logic_vector(1 downto 0):="11";
-constant    DT_REV          : std_logic:='0'; 
+constant NFFT               : integer:=8; 
+constant SCALE              : std_logic_vector(5 downto 0):="011100";
+--constant USE_FLY            : std_logic:='1';
+--constant USE_IFLY           : std_logic:='1';
+constant DT_MUX             : std_logic_vector(1 downto 0):="11";
+constant DT_REV             : std_logic:='0';
 
 signal clk                  : std_logic:='0';
 signal reset                : std_logic:='0';
         
-signal din_re               : std_logic_vector(15 downto 0):=x"0000"; 
-signal din_im               : std_logic_vector(15 downto 0):=x"0000"; 
+signal din_re               : std_logic_vector(15 downto 0):=x"0000";
+signal din_im               : std_logic_vector(15 downto 0):=x"0000";
 signal din_en               : std_logic:='0';
 
 signal dout0                : std_logic_vector(15 downto 0);
@@ -73,7 +73,7 @@ signal dval                 : std_logic;
 
 begin
 
-clk <= not clk after 5 ns;
+clk   <= not clk after 5 ns;
 reset <= '1', '0' after 100 ns;
 
 -------------------------------------------------------------------------------- 
@@ -90,7 +90,7 @@ read_din: process is
     variable lt2    : integer:=0; 
 begin       
     wait for 50 ns;
-    if (reset = '0') then   
+    if (reset = '0') then
         din_en <= '0';
         din_re <= (others => '0');
         din_im <= (others => '0');
@@ -106,27 +106,27 @@ begin
                 wait until rising_edge(clk);
 
                 readline( file_dt_re, l );
-                read( l, lt1 ); 
+                read( l, lt1 );
                 readline( file_dt_im, l );
-                read( l, lt2 );  
+                read( l, lt2 );
 
                 din_re <= conv_std_logic_vector( lt1, 16 );
                 din_im <= conv_std_logic_vector( lt2, 16 );
                 din_en <= '1'; 
-            end loop;   
+            end loop;
 
             wait until rising_edge(clk);
             din_en <= '0';
             din_re <= ( others => '0');
             din_im <= ( others => '0');
 
-            for nn in 0 to 512 loop
+            for nn in 0 to 2**(NFFT-1) loop
                 wait until rising_edge(clk);
             end loop;
         end loop;
             din_en <= '0';
-            din_re <= ( others => '1');
-            din_im <= ( others => '1');
+            din_re <= (others => '1');
+            din_im <= (others => '1');
         wait;
     end if;
 end process;  
@@ -143,10 +143,7 @@ uut_fft: entity work.fp23_logic
         XSERIES             => "ULTRA",
         NFFT                => NFFT
     )
-    port map ( 
-        use_fly             => use_fly,
-        use_ifly            => use_ifly,
-        
+    port map (
         reset               => reset,
         clk                 => clk,
  
@@ -163,4 +160,4 @@ uut_fft: entity work.fp23_logic
         d_vl                => dval
     );
 
-end fp_test; 
+end fp_test;

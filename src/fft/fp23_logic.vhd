@@ -58,8 +58,8 @@ entity fp23_logic is
         NFFT                : integer :=16          --! Number of FFT stages    
     );                                                        
     port (
-        use_fly             : in std_logic;                     --! '1' - use bfly, '0' - don't use bfly
-        use_ifly            : in std_logic;                     --! '1' - use bfly, '0' - don't use bfly
+--        use_fly             : in std_logic;                     --! '1' - use bfly, '0' - don't use bfly
+--        use_ifly            : in std_logic;                     --! '1' - use bfly, '0' - don't use bfly
 
         reset               : in std_logic;                     --! Global reset                                                              
         clk                 : in std_logic;                     --! DSP clock                                                         

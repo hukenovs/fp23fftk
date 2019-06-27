@@ -56,22 +56,22 @@ use work.fp_m1_pkg.fp23_data;
 
 entity fp23_ibfly_inv is
     generic (
-        STAGE               : integer:=0; --! Butterfly stage
-        USE_CONJ            : boolean:=FALSE; --! Use conjugation for IFFT
-        USE_MLT_FOR_ADDSUB  : boolean:=FALSE; --! Use DSP48E1/2 blocks or not for Add/Sub
-        USE_MLT_FOR_CMULT   : boolean:=FALSE; --! Use DSP48E1/2 blocks or not for Complex Mult
+        STAGE               : integer:=0;       --! Butterfly stage
+        USE_CONJ            : boolean:=FALSE;   --! Use conjugation for IFFT
+        USE_MLT_FOR_ADDSUB  : boolean:=FALSE;   --! Use DSP48E1/2 blocks or not for Add/Sub
+        USE_MLT_FOR_CMULT   : boolean:=FALSE;   --! Use DSP48E1/2 blocks or not for Complex Mult
         XSERIES             : string:="7SERIES" --! FPGA family: for 6/7 series: "7SERIES"; for ULTRASCALE: "ULTRA";
-    );  
-    port(
+    );
+    port (
         DT_IA               : in  fp23_complex; --! Even data in part
         DT_IB               : in  fp23_complex; --! Odd data in part
         DI_EN               : in  std_logic;    --! Data enable
-        WW                  : in  fp23_complex; --! Twiddle data
+        DT_WW               : in  fp23_complex; --! Twiddle data
         DT_OA               : out fp23_complex; --! Even data out
         DT_OB               : out fp23_complex; --! Odd data out
         DO_VL               : out std_logic;    --! Data valid
         RESET               : in  std_logic;    --! Global reset
-        CLK                 : in  std_logic     --! Clock   
+        CLK                 : in  std_logic     --! Clock
     );
 end fp23_ibfly_inv;
 
@@ -149,7 +149,7 @@ begin
                 dval_en(1) <= DI_EN;
             end if;
         end process;
-    end generate;   
+    end generate; 
     
 end generate;
 
@@ -172,7 +172,7 @@ begin
         )   
         port map (
             aa      => DT_IB.re,
-            bb      => WW.re,
+            bb      => DT_WW.re,
             cc      => re_x_re,
             enable  => DI_EN,
             valid   => dval_en(0),
@@ -186,12 +186,12 @@ begin
         )   
         port map (
             aa      => DT_IB.im,
-            bb      => WW.im,
+            bb      => DT_WW.im,
             cc      => im_x_im,
             enable  => DI_EN,
             reset   => reset,
             clk     => clk
-        );  
+        );
         
     RE_IM_MUL : entity work.fp23_mult
         generic map ( 
@@ -199,7 +199,7 @@ begin
         )   
         port map (
             aa      => DT_IB.re,
-            bb      => WW.im,
+            bb      => DT_WW.im,
             cc      => re_x_im,
             enable  => DI_EN,
             reset   => reset,
@@ -212,12 +212,12 @@ begin
         )   
         port map (
             aa      => DT_IB.im,
-            bb      => WW.re,
+            bb      => DT_WW.re,
             cc      => im_x_re,
             enable  => DI_EN,
             reset   => reset,
             clk     => clk
-        );  
+        );
         
     G_CONJ_FALSE: if use_conj = FALSE generate
     begin
@@ -235,7 +235,7 @@ begin
                 reset   => reset,
                 enable  => dval_en(0),
                 clk     => clk  
-            );  
+            );
             
         DT_OB_RE_ADD: entity work.fp23_addsub 
             generic map ( 
@@ -251,7 +251,7 @@ begin
                 enable  => dval_en(0),
                 valid   => dval_en(1),
                 clk     => clk  
-            );  
+            );
     end generate; 
     
     G_CONJ_TRUE: if use_conj = TRUE generate
@@ -270,7 +270,7 @@ begin
                 addsub  => '0',
                 enable  => dval_en(0),
                 clk     => clk  
-            );  
+            );
             
         DT_OB_RE_SUB: entity work.fp23_addsub
             generic map ( 
@@ -286,7 +286,7 @@ begin
                 enable  => dval_en(0),
                 valid   => dval_en(1),
                 clk     => clk  
-            );  
+            );
     end generate; 
 
     aw <= dt_ia_del(dt_ia_del'left);
@@ -323,7 +323,7 @@ ADD_IM: entity work.fp23_addsub_dbl
         enable  => dval_en(1), 
         valid   => dval_en(2),
         clk     => clk  
-    );  
+    );
 
 
 DT_OA <= sum;

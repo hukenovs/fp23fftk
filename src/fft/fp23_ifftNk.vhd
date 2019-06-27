@@ -62,7 +62,7 @@ use ieee.std_logic_unsigned.all;
 use work.fp_m1_pkg.all;
 
 entity fp23_ifftNk is
-    generic(
+    generic (
         NFFT                : integer:=10;          --! Number of FFT stages   
         XSERIES             : string:="7SERIES";    --! FPGA family: for 6/7 series: "7SERIES"; for ULTRASCALE: "ULTRA";
         USE_SCALE           : boolean:=FALSE;       --! use full scale rambs for twiddle factor
@@ -71,7 +71,7 @@ entity fp23_ifftNk is
         USE_MLT_FOR_CMULT   : boolean:=FALSE; --! Use DSP48E1/2 blocks or not for Complex Mult
         USE_MLT_FOR_TWDLS   : boolean:=FALSE  --! Use DSP48E1/2 blocks or not for Twiddles  
     );      
-    port(
+    port (
         reset           : in  std_logic;        --! Global reset 
         clk             : in  std_logic;        --! System clock 
     
@@ -143,28 +143,28 @@ begin
             XSERIES             => XSERIES,
             USE_CONJ            => use_conj
         )
-        port map(
-            dt_ia               => iax(ii), 
-            dt_ib               => ibx(ii),
-            di_en               => bfly_enx(ii),
-            ww                  => ww(ii),
-            dt_oa               => oa1(ii), 
-            dt_ob               => ob1(ii),
-            do_vl               => bfly_vl1(ii),
-            reset               => reset,
-            clk                 => clk
+        port map (
+            DT_IA               => iax(ii), 
+            DT_IB               => ibx(ii),
+            DI_EN               => bfly_enx(ii),
+            DT_WW               => ww(ii),
+            DT_OA               => oa1(ii), 
+            DT_OB               => ob1(ii),
+            DO_VL               => bfly_vl1(ii),
+            RESET               => reset,
+            CLK                 => clk
         );
 
 
     COE_ROM: entity work.rom_twiddle_gen
-        generic map(
+        generic map (
             NFFT        => NFFT,
             STAGE       => NFFT-1-ii,
             XSERIES     => XSERIES,
             USE_MLT     => USE_MLT_FOR_TWDLS,
             USE_SCALE   => USE_SCALE
         )
-        port map(
+        port map (
             ww          => ww(ii),
             clk         => clk,
             ww_ena      => coe_en(ii),
@@ -179,12 +179,12 @@ begin
         )
         port map (  
             clk         => clk,
-            ia          => ia(ii),
-            ib          => ib(ii),
-            iax         => iax(ii),
-            ibx         => ibx(ii),
-            bfly_en     => bfly_en(ii),
-            bfly_enx    => bfly_enx(ii)
+            dt_ia       => ia(ii),
+            dt_ib       => ib(ii),
+            dt_xa       => iax(ii),
+            dt_xb       => ibx(ii),
+            fl_en       => bfly_en(ii),
+            fl_vl       => bfly_enx(ii)
         );          
             
     coe_en(ii)      <= bfly_en(ii);
@@ -216,7 +216,7 @@ DELAY_STAGE: for ii in 0 to NFFT-2 generate
     del_en(ii) <= bfly_vl(ii);
     
     DELAY_LINE : entity work.fp_delay_line
-        generic map(
+        generic map (
             Nwidth      => 2*Nwidth,
             NFFT        => NFFT,
             stage       => NFFT-2-ii
