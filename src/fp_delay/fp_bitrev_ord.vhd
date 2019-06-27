@@ -46,7 +46,6 @@ use ieee.std_logic_unsigned.all;
 
 entity fp_bitrev_ord is
     generic (
-        td          : time:=1ns;        --! Time delay for simulation
         FWT         : boolean:=TRUE;    --! Bitreverse mode: Even/Odd - "TRUE" or Half Pair - "FALSE". For FFT: "TRUE"
         PAIR        : boolean:=TRUE;    --! Bitreverse mode: Even/Odd - "TRUE" or Half Pair - "FALSE". For FFT: "TRUE"
         STAGES      : integer:=4;       --! FFT stages
@@ -140,13 +139,13 @@ xFWT_FALSE: if (FWT = FALSE) generate
     xPAIR_TRUE: if (PAIR = TRUE) generate
         addra <= bit_pair2(STAGES, addrx);
         G_BR_ADDR: for ii in 0 to STAGES-1 generate
-            addrb(ii) <= cnt(STAGES-1-ii) after td when rising_edge(clk);
+            addrb(ii) <= cnt(STAGES-1-ii) when rising_edge(clk);
         end generate;
     end generate;   
     
 end generate;   
 
-addrx <= cnt(STAGES-1 downto 0) after td when rising_edge(clk);
+addrx <= cnt(STAGES-1 downto 0) when rising_edge(clk);
 
 -------------------------------------------------------------------------------
 
@@ -155,17 +154,17 @@ pr_dout: process(clk) is
 begin
     if rising_edge(clk) then
         if (reset = '1') then
-            do_dt <= (others => '0') after td;      
+            do_dt <= (others => '0');      
         else
             if (dmux = '0') then
-                do_dt <= ram_do1 after td;
+                do_dt <= ram_do1;
             else
-                do_dt <= ram_do0 after td;
+                do_dt <= ram_do0;
             end if; 
         end if;
     end if;
 end process;    
-do_vl <= valid and cnt1st(STAGES) after td when rising_edge(clk);
+do_vl <= valid and cnt1st(STAGES) when rising_edge(clk);
         
 -- Common proc --   
 ram_di0 <= di_dt when rising_edge(clk);
@@ -175,25 +174,25 @@ pr_cnt: process(clk) is
 begin
     if rising_edge(clk) then
         if (reset = '1') then
-            cnt <= (others => '0') after td;
+            cnt <= (others => '0');
         else
             if (di_en = '1') then
-                cnt <= cnt + '1' after td;
+                cnt <= cnt + '1';
             end if; 
         end if;
     end if;
 end process;
-cntz <= cntz(0) & cnt(STAGES) after td when rising_edge(clk);
+cntz <= cntz(0) & cnt(STAGES) when rising_edge(clk);
 
 pr_we: process(clk) is
 begin
     if rising_edge(clk) then
         if (reset = '1') then
-            we0 <= '0' after td;
-            we1 <= '0' after td;    
+            we0 <= '0';
+            we1 <= '0';    
         else
-            we0 <= not cnt(STAGES) and di_en after td;
-            we1 <= cnt(STAGES) and di_en after td;
+            we0 <= not cnt(STAGES) and di_en;
+            we1 <= cnt(STAGES) and di_en;
         end if;
     end if;
 end process;
@@ -202,14 +201,14 @@ end process;
 rd0 <= we1;
 rd1 <= we0;
 
-vl0 <= we1 after td when rising_edge(clk);
-vl1 <= we0 after td when rising_edge(clk);
+vl0 <= we1 when rising_edge(clk);
+vl1 <= we0 when rising_edge(clk);
 
---addrx <= cnt(STAGES-1 downto 0) after td when rising_edge(clk);
-----addrb <= cnt(STAGES-1 downto 0) after td when rising_edge(clk);
+--addrx <= cnt(STAGES-1 downto 0) when rising_edge(clk);
+----addrb <= cnt(STAGES-1 downto 0) when rising_edge(clk);
 --addrb <= bit_pair(STAGES, addrx);
 --G_BR_ADDR: for ii in 0 to STAGES-1 generate      
-----    addrb(ii) <= cnt(STAGES-1-ii) after td when rising_edge(clk);
+----    addrb(ii) <= cnt(STAGES-1-ii) when rising_edge(clk);
 --end generate;
 
 -- RAMB generator --    
@@ -225,9 +224,9 @@ begin
                 if (we0 = '1') then
                     ram0(conv_integer(addra)) := ram_di0(ii);
                 end if;
-                --ram_do0 <= ram0(conv_integer(addra)) after td; -- signle port
+                --ram_do0 <= ram0(conv_integer(addra)); -- signle port
                 if (rd0 = '1') then
-                    ram_do0(ii) <= ram0(conv_integer(addrb)) after td; -- dual port
+                    ram_do0(ii) <= ram0(conv_integer(addrb)); -- dual port
                 end if;
             end if; 
         end process;
@@ -239,9 +238,9 @@ begin
                 if (we1 = '1') then
                     ram1(conv_integer(addra)) := ram_di1(ii);
                 end if;
-                --ram_do1 <= ram1(conv_integer(addra)) after td; -- signle port
+                --ram_do1 <= ram1(conv_integer(addra)); -- signle port
                 if (rd1 = '1') then
-                    ram_do1(ii) <= ram1(conv_integer(addrb)) after td; -- dual port
+                    ram_do1(ii) <= ram1(conv_integer(addrb)); -- dual port
                 end if;
             end if; 
         end process;        
@@ -264,12 +263,12 @@ begin
     PR_RAMB0: process(clk) is
     begin
         if (clk'event and clk = '1') then
-            ram_do0 <= dout0 after td;
+            ram_do0 <= dout0;
             if (reset = '1') then 
                 dout0 <= (others => '0');
             else
                 if (rd0 = '1') then
-                    dout0 <= ram0(conv_integer(addrb)) after td; -- dual port
+                    dout0 <= ram0(conv_integer(addrb)); -- dual port
                 end if;
             end if;
             if (we0 = '1') then
@@ -281,12 +280,12 @@ begin
     PR_RAMB1: process(clk) is
     begin
         if (clk'event and clk = '1') then
-            ram_do1 <= dout1 after td;
+            ram_do1 <= dout1;
             if (reset = '1') then
                 dout1 <= (others => '0');
             else
                 if (rd1 = '1') then
-                    dout1 <= ram1(conv_integer(addrb)) after td; -- dual port
+                    dout1 <= ram1(conv_integer(addrb)); -- dual port
                 end if;
             end if;
             if (we1 = '1') then
@@ -295,8 +294,8 @@ begin
         end if; 
     end process;
     
-    dmux <= cntz(1) after td when rising_edge(clk);
-    valid <= (vl0 or vl1) after td when rising_edge(clk);
+    dmux <= cntz(1) when rising_edge(clk);
+    valid <= (vl0 or vl1) when rising_edge(clk);
 end generate;
 
 end fp_bitrev_ord;

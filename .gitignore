@@ -1,0 +1,8 @@
+# Text files
+*.dat
+*.vho
+*.txt
+
+# Distribution / packaging
+viv/
+vivado/

@@ -46,7 +46,6 @@ use ieee.std_logic_unsigned.all;
 
 entity fp_Ndelay_in is
     generic (
-        td          : time:=1ns; --! Time delay for simulation
         STAGES      : integer:=7; --! FFT stages
         Nwidth      : integer:=48 --! Data width
     );
@@ -89,37 +88,37 @@ signal wea              : std_logic;
 begin   
     
 -- Common processes for delay lines --
-din_rez <= din_re after td when rising_edge(clk);
-din_imz <= din_im after td when rising_edge(clk);
+din_rez <= din_re when rising_edge(clk);
+din_imz <= din_im when rising_edge(clk);
 
-din_rezz <= din_rez after td when rising_edge(clk);
-din_imzz <= din_imz after td when rising_edge(clk);
+din_rezz <= din_rez when rising_edge(clk);
+din_imzz <= din_imz when rising_edge(clk);
 
 pr_cnt: process(clk) is
 begin
     if rising_edge(clk) then
         if (reset = '1') then
-            cnt <= (others => '0') after td;
+            cnt <= (others => '0');
         else
             if (din_en = '1') then
-                cnt <= cnt + '1' after td;
+                cnt <= cnt + '1';
             end if; 
         end if;
     end if;
 end process;
 
 addra <= cnt(STAGES-2 downto 0);
-addrb <= cnt(STAGES-2 downto 0) after td when rising_edge(clk);
+addrb <= cnt(STAGES-2 downto 0) when rising_edge(clk);
 
 ena         <= din_en;
 wea         <= not cnt(STAGES-1);
 ram_din     <= din_im & din_re;
-dout_en     <= cnt(STAGES-1) and din_en after td when rising_edge(clk);
-dout_enz    <= dout_en after td when rising_edge(clk);
+dout_en     <= cnt(STAGES-1) and din_en when rising_edge(clk);
+dout_enz    <= dout_en when rising_edge(clk);
 
-dout_val    <= dout_enz after td when rising_edge(clk);
-cb_re       <= din_rezz after td when rising_edge(clk) and dout_enz = '1';
-cb_im       <= din_imzz after td when rising_edge(clk) and dout_enz = '1';  
+dout_val    <= dout_enz when rising_edge(clk);
+cb_re       <= din_rezz when rising_edge(clk) and dout_enz = '1';
+cb_im       <= din_imzz when rising_edge(clk) and dout_enz = '1';  
 
 G_HIGH_STAGE: if (STAGES >= 10) generate
     type ram_t is array(0 to 2**(STAGES-1)-1) of std_logic_vector(2*Nwidth-1 downto 0);
@@ -131,17 +130,17 @@ G_HIGH_STAGE: if (STAGES >= 10) generate
     attribute ram_style of RAM  : signal is "block";    
                         
 begin
-    enb <= cnt(STAGES-1) and din_en after td when rising_edge(clk);
+    enb <= cnt(STAGES-1) and din_en when rising_edge(clk);
     
     PR_RAMB: process(clk) is
     begin
         if (clk'event and clk = '1') then
-            ram_dout <= dout after td;
+            ram_dout <= dout;
             if (reset = '1') then
                 dout <= (others => '0');
             else
                 if (enb = '1') then
-                    dout <= ram(conv_integer(addrb)) after td; -- dual port
+                    dout <= ram(conv_integer(addrb)); -- dual port
                 end if;
             end if;             
             if (ena = '1') then
@@ -169,14 +168,14 @@ begin
                 if (wea = '1') then
                     ram(conv_integer(addra)) := ram_din(ii);
                 end if;
-                --ram_dout <= ram(conv_integer(addra)) after td; -- signle port
-                ram_dout(ii) <= ram(conv_integer(addrb)) after td; -- dual port
+                --ram_dout <= ram(conv_integer(addra)); -- signle port
+                ram_dout(ii) <= ram(conv_integer(addrb)); -- dual port
             end if; 
         end process;
     end generate;
 
-    ca_re <= ram_dout(1*Nwidth-1 downto 0) after td when rising_edge(clk) and dout_enz = '1';
-    ca_im <= ram_dout(2*Nwidth-1 downto Nwidth) after td when rising_edge(clk) and dout_enz = '1';
+    ca_re <= ram_dout(1*Nwidth-1 downto 0) when rising_edge(clk) and dout_enz = '1';
+    ca_im <= ram_dout(2*Nwidth-1 downto Nwidth) when rising_edge(clk) and dout_enz = '1';
 end generate; 
 
 end fp_Ndelay_in;

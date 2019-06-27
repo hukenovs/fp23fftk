@@ -47,7 +47,6 @@ use std.textio.all;
 
 entity fp23_logic is
     generic (
-        TD                  : time:=1ns;            --! Time delay for simulation
         USE_SCALE           : boolean:=FALSE;       --! use full scale rambs for twiddle factor
         USE_MLT_FOR_ADDSUB  : boolean:=FALSE;       --! Use DSP48E1/2 blocks or not for Add/Sub
         USE_MLT_FOR_CMULT   : boolean:=FALSE;       --! Use DSP48E1/2 blocks or not for Complex Mult
@@ -132,7 +131,6 @@ begin
 -------------------- INPUT BUFFER --------------------
 xIN_BUF: entity work.fp_Ndelay_in
     generic map (
-        td          => td,
         STAGES      => NFFT,
         Nwidth      => Nwidth
     )   
@@ -342,7 +340,6 @@ xOUT_BUF : entity work.fp_Ndelay_out
 -------------------- BIT REVERSE ORDER --------------------         
 xBITREV_RE : entity work.fp_bitrev_ord
     generic map (
-        td          => td,
         FWT         => USE_FWT,
         PAIR        => USE_PAIR,
         STAGES      => NFFT,
@@ -361,7 +358,6 @@ xBITREV_RE : entity work.fp_bitrev_ord
 
 xBITREV_IM : entity work.fp_bitrev_ord
     generic map (
-        td          => td,
         FWT         => USE_FWT,
         PAIR        => USE_PAIR,
         STAGES      => NFFT,

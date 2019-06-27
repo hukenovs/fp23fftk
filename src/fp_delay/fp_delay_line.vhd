@@ -82,7 +82,6 @@ use ieee.std_logic_unsigned.all;
 
 entity fp_delay_line is
     generic(
-        td          : time:=1ns; --! Time delay for simulation  
         NFFT        : integer:=18; --! FFT NFFT
         stage       : integer:=0; --! Stage number
         Nwidth      : integer:=48 --! Data width

@@ -134,7 +134,6 @@ use work.fp_m1_pkg.find_fp;
 
 entity rom_twiddle_gen is
     generic(
-        TD          : time:=1ns;    --! Delay time
         NFFT        : integer:=11;  --! FFT lenght
         STAGE       : integer:=0;   --! FFT stage       
         XSERIES     : string:="7SERIES"; --! FPGA family: for 6/7 series: "7SERIES"; for ULTRASCALE: "ULTRA";
@@ -204,10 +203,10 @@ pr_ww: process(clk) is
 begin
     if rising_edge(clk) then
         if (div = '0') then
-            ww_node <= dpo after td;
+            ww_node <= dpo;
         else      
-            ww_node(15 downto 00) <= dpo(31 downto 16) after td;
-            ww_node(31 downto 16) <= not dpo(15 downto 00) after td; -- NEGATIVE!!
+            ww_node(15 downto 00) <= dpo(31 downto 16);
+            ww_node(31 downto 16) <= not dpo(15 downto 00); -- NEGATIVE!!
         end if;
     end if;
 end process; 
@@ -269,18 +268,18 @@ begin
             if (reset = '1') then
                 cnt <=  (others =>  '0');
             elsif (ww_ena = '1') then
-                cnt <= cnt + '1' after td;
+                cnt <= cnt + '1';
             end if;
         end if;
     end process;    
 
-    addr <= cnt(N_INV-2 downto 0) after td when rising_edge(clk);
-    half <= cnt(N_INV-1) after td when rising_edge(clk);        
-    div  <= half after td when rising_edge(clk);    
+    addr <= cnt(N_INV-2 downto 0) when rising_edge(clk);
+    half <= cnt(N_INV-1) when rising_edge(clk);        
+    div  <= half when rising_edge(clk);    
     
     X_GEN_M1: if ((N_INV < 12) or (USE_SCALE = TRUE)) generate      
     begin
-        dpo <= ww32x1K(conv_integer(unsigned(addr))) after td when rising_edge(clk);
+        dpo <= ww32x1K(conv_integer(unsigned(addr))) when rising_edge(clk);
         ww <= ww_i;
     end generate;       
         
