@@ -51,7 +51,7 @@ use work.fp_m1_pkg.fp23_complex;
 use work.reduce_pack.and_reduce;
 
 entity fp23_sfunc_dbl is
-    generic( 
+    generic ( 
         SFMODE          : string:="FWD";--!  "FWD" - linear address for SF / "INV" - bit-reverse address
         NFFT            : integer:=15 --! FFT stages: NFFT = log2(N)
     );
@@ -265,7 +265,7 @@ fix_en <= fix_rd  when rising_edge(clk_dsp);
 
 ---------------- FIX 2 FLOAT --------------------
 FIX_RE0: entity work.fp23_fix2float
-    port map(
+    port map (
         din         => sf0_re,
         ena         => fix_en,
         dout        => fp_sf_dt0.re,
@@ -275,7 +275,7 @@ FIX_RE0: entity work.fp23_fix2float
     );
 
 FIX_IM0: entity work.fp23_fix2float
-    port map(
+    port map (
         din         => sf0_im,
         ena         => fix_en,
         dout        => fp_sf_dt0.im,
@@ -285,7 +285,7 @@ FIX_IM0: entity work.fp23_fix2float
     );
 
 FIX_RE1: entity work.fp23_fix2float
-    port map(
+    port map (
         din         => sf1_re,
         ena         => fix_en,
         dout        => fp_sf_dt1.re,
@@ -295,7 +295,7 @@ FIX_RE1: entity work.fp23_fix2float
     );
 
 FIX_IM1: entity work.fp23_fix2float
-    port map(
+    port map (
         din         => sf1_im,
         ena         => fix_en,
         dout        => fp_sf_dt1.im,

@@ -74,7 +74,7 @@ entity inbuf_fastconv_int2 is
         NFFT        : integer := 13;      --! Number of FFT butterflies
         DATA        : integer := 16       --! I/O data width
     );
-    port(
+    port (
         ---- Common signals ----
         CLK         : in  std_logic; --! Clock
         RST         : in  std_logic; --! Reset

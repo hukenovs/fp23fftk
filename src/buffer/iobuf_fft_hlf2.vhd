@@ -55,7 +55,7 @@ entity iobuf_fft_hlf2 is
         ADDR        : integer := 13;      --! Number of FFT butterflies
         DATA        : integer := 16       --! I/O data width
     );
-    port(
+    port (
         ---- Common signals ----
         CLK         : in  std_logic; --! Clock
         RST         : in  std_logic; --! Reset

@@ -10,27 +10,27 @@
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 --
---  The MIT License (MIT)
---  Copyright (c) 2016 Kapitanov Alexander
+--  GNU GENERAL PUBLIC LICENSE
+--  Version 3, 29 June 2007
 --
--- Permission is hereby granted, free of charge, to any person obtaining a copy 
--- of this software and associated documentation files (the "Software"), 
--- to deal in the Software without restriction, including without limitation 
--- the rights to use, copy, modify, merge, publish, distribute, sublicense, 
--- and/or sell copies of the Software, and to permit persons to whom the 
--- Software is furnished to do so, subject to the following conditions:
+--  Copyright (c) 2019 Kapitanov Alexander
 --
--- The above copyright notice and this permission notice shall be included in 
--- all copies or substantial portions of the Software.
+--  This program is free software: you can redistribute it and/or modify
+--  it under the terms of the GNU General Public License as published by
+--  the Free Software Foundation, either version 3 of the License, or
+--  (at your option) any later version.
 --
+--  You should have received a copy of the GNU General Public License
+--  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 --
--- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
--- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
--- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL 
--- THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
--- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
--- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS 
--- IN THE SOFTWARE.
+--  THERE IS NO WARRANTY FOR THE PROGRAM, TO THE EXTENT PERMITTED BY
+--  APPLICABLE LAW. EXCEPT WHEN OTHERWISE STATED IN WRITING THE COPYRIGHT 
+--  HOLDERS AND/OR OTHER PARTIES PROVIDE THE PROGRAM "AS IS" WITHOUT WARRANTY 
+--  OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, 
+--  THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR 
+--  PURPOSE.  THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE PROGRAM 
+--  IS WITH YOU.  SHOULD THE PROGRAM PROVE DEFECTIVE, YOU ASSUME THE COST OF 
+--  ALL NECESSARY SERVICING, REPAIR OR CORRECTION. 
 --
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
@@ -151,7 +151,7 @@ xIN_BUF: entity work.fp_Ndelay_in
     
 -------------------- FIX to FLOAT CONVERSION (on DSP or LUT) --------------------   
 FIX0_IF: entity work.fp23_fix2float
-    port map(
+    port map (
         din         => ca_re,
         ena         => buf_en,
         dout        => din0_fft.re,
@@ -160,7 +160,7 @@ FIX0_IF: entity work.fp23_fix2float
         reset       => reset
     );                  
 FIX1_IF: entity work.fp23_fix2float
-    port map(
+    port map (
         din         => ca_im,
         ena         => buf_en,
         dout        => din0_fft.im,
@@ -169,7 +169,7 @@ FIX1_IF: entity work.fp23_fix2float
         reset       => reset
     );  
 FIX2_IF: entity work.fp23_fix2float
-    port map(
+    port map (
         din         => cb_re,
         ena         => buf_en,
         dout        => din1_fft.re,
@@ -178,7 +178,7 @@ FIX2_IF: entity work.fp23_fix2float
         reset       => reset
     );          
 FIX3_IF: entity work.fp23_fix2float
-    port map(
+    port map (
         din         => cb_im,
         ena         => buf_en,
         dout        => din1_fft.im,
@@ -226,7 +226,7 @@ xIFFT: entity work.fp23_ifftNk
         USE_CONJ            => USE_CONJ,
         XSERIES             => XSERIES  
     )
-    port map(
+    port map (
         data_in0            => din0_ifft,
         data_in1            => din1_ifft,
         data_en             => ifft_en, 

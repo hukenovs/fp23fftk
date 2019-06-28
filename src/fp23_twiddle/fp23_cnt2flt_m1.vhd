@@ -34,27 +34,27 @@
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 --
---  The MIT License (MIT)
---  Copyright (c) 2016 Kapitanov Alexander                                                   
+--  GNU GENERAL PUBLIC LICENSE
+--  Version 3, 29 June 2007
 --
--- Permission is hereby granted,free of charge,to any person obtaining a copy 
--- of this software and associated documentation files (the "Software"),
--- to deal in the Software without restriction,including without limitation 
--- the rights to use,copy,modify,merge,publish,distribute,sublicense,
--- and/or sell copies of the Software,and to permit persons to whom the 
--- Software is furnished to do so,subject to the following conditions:
+--  Copyright (c) 2019 Kapitanov Alexander
 --
--- The above copyright notice and this permission notice shall be included in 
--- all copies or substantial portions of the Software.
+--  This program is free software: you can redistribute it and/or modify
+--  it under the terms of the GNU General Public License as published by
+--  the Free Software Foundation, either version 3 of the License, or
+--  (at your option) any later version.
 --
+--  You should have received a copy of the GNU General Public License
+--  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 --
--- THE SOFTWARE IS PROVIDED "AS IS",WITHOUT WARRANTY OF ANY KIND,EXPRESS OR 
--- IMPLIED,INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
--- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL 
--- THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,DAMAGES OR OTHER 
--- LIABILITY,WHETHER IN AN ACTION OF CONTRACT,TORT OR OTHERWISE,ARISING FROM,
--- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS 
--- IN THE SOFTWARE.
+--  THERE IS NO WARRANTY FOR THE PROGRAM, TO THE EXTENT PERMITTED BY
+--  APPLICABLE LAW. EXCEPT WHEN OTHERWISE STATED IN WRITING THE COPYRIGHT 
+--  HOLDERS AND/OR OTHER PARTIES PROVIDE THE PROGRAM "AS IS" WITHOUT WARRANTY 
+--  OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, 
+--  THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR 
+--  PURPOSE.  THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE PROGRAM 
+--  IS WITH YOU.  SHOULD THE PROGRAM PROVE DEFECTIVE, YOU ASSUME THE COST OF 
+--  ALL NECESSARY SERVICING, REPAIR OR CORRECTION. 
 --
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
@@ -68,7 +68,7 @@ use WORK.fp_m1_pkg.fp23_data;
 use WORK.fp_m1_pkg.fp23_complex;
 
 entity fp23_cnt2flt_m1 is
-    generic(
+    generic (
         USE_MLT : boolean:=FALSE; -- Use DSP48 for Add/Sub in twiddles
         XSERIES : string:="7SERIES"; --! FPGA family: for 6/7 series: "7SERIES"; for ULTRASCALE: "ULTRA";
         ii  : integer:=4 --! 0,1,2,3,4,5 -- 16-stages-stage_num
@@ -186,7 +186,7 @@ fp_cnt <= cnt_rom(conv_integer(int_cnt)) when rising_edge(clk);
 
 CALC_314_MULT : entity work.fp23_mult
     generic map ( XSERIES => XSERIES )
-    port map(
+    port map (
         aa      => fp_cnt,
         bb      => fp23_pi,
         cc      => pi_mult,
@@ -198,7 +198,7 @@ CALC_314_MULT : entity work.fp23_mult
     
 CALC_PI_SIN: entity work.fp23_mult 
     generic map ( XSERIES => XSERIES )
-    port map(
+    port map (
         aa      => rom_ww.im,--del_m_sin,
         bb      => pi_mult,
         cc      => mlt1_sin,
@@ -211,7 +211,7 @@ CALC_PI_SIN: entity work.fp23_mult
 CALC_PI_COS: entity work.fp23_mult 
     generic map ( 
         XSERIES => XSERIES)
-    port map(
+    port map (
         aa      => rom_ww.re,
         bb      => pi_mult,
         cc      => mlt1_cos,

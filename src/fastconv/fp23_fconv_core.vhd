@@ -125,9 +125,6 @@ library work;
 use work.fp_m1_pkg.fp23_complex;
 use work.fp_m1_pkg.int16_complex;
 
-use ieee.std_logic_textio.all;
-use std.textio.all;
-
 entity fp23_fconv_core is    
     generic (
         DATA                : integer := 64;        --! Data width: double of [I/Q]
@@ -140,13 +137,11 @@ entity fp23_fconv_core is
     );
     port (
         ---- Clocks ----
-        clk_trd             : in std_logic; --! System clock   
-        clk_dsp             : in std_logic; --! DSP core clock 
+        clk_trd             : in std_logic; --! System clock
+        clk_dsp             : in std_logic; --! DSP core clock
 
         ---- Resets ----
-        reset               : in std_logic; --! Global reset 
-        start               : in std_logic; --! Start DSP core
-        
+        reset               : in std_logic; --! Global reset
         ---- Input data (two complex words in one clock) ----
         di_dt              : in std_logic_vector(DATA-1 downto 0); --! Chan0 Input data
         di_en              : in std_logic; --! Chan0 input valid

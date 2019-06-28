@@ -129,7 +129,7 @@ begin
 
 -------------------- FIX to FLOAT --------------------  
 xFIX0_RE: entity work.fp23_fix2float
-    port map(
+    port map (
         din         => fix0_di.re,
         ena         => fix_ena,
         dout        => fft0_fc.re,
@@ -139,7 +139,7 @@ xFIX0_RE: entity work.fp23_fix2float
     );
 
 xFIX0_IM: entity work.fp23_fix2float
-    port map(
+    port map (
         din         => fix0_di.im,
         ena         => fix_ena,
         dout        => fft0_fc.im,
@@ -149,7 +149,7 @@ xFIX0_IM: entity work.fp23_fix2float
     );
 
 xFIX1_RE: entity work.fp23_fix2float
-    port map(
+    port map (
         din         => fix1_di.re,
         ena         => fix_ena,
         dout        => fft1_fc.re,
@@ -159,7 +159,7 @@ xFIX1_RE: entity work.fp23_fix2float
     );
 
 xFIX1_IM: entity work.fp23_fix2float
-    port map(
+    port map (
         din         => fix1_di.im,
         ena         => fix_ena,
         dout        => fft1_fc.im,
@@ -169,7 +169,7 @@ xFIX1_IM: entity work.fp23_fix2float
     );
 
 xFIX2_RE: entity work.fp23_fix2float
-    port map(
+    port map (
         din         => fix2_di.re,
         ena         => fix_ena,
         dout        => fft2_fc.re,
@@ -179,7 +179,7 @@ xFIX2_RE: entity work.fp23_fix2float
     );
 
 xFIX2_IM: entity work.fp23_fix2float
-    port map(
+    port map (
         din         => fix2_di.im,
         ena         => fix_ena,
         dout        => fft2_fc.im,

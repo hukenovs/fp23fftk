@@ -18,27 +18,27 @@
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
 --
---  The MIT License (MIT)
---  Copyright (c) 2016 Kapitanov Alexander
+--  GNU GENERAL PUBLIC LICENSE
+--  Version 3, 29 June 2007
 --
--- Permission is hereby granted,free of charge,to any person obtaining a copy 
--- of this software and associated documentation files (the "Software"),
--- to deal in the Software without restriction,including without limitation 
--- the rights to use,copy,modify,merge,publish,distribute,sublicense,
--- and/or sell copies of the Software,and to permit persons to whom the 
--- Software is furnished to do so,subject to the following conditions:
+--  Copyright (c) 2019 Kapitanov Alexander
 --
--- The above copyright notice and this permission notice shall be included in 
--- all copies or substantial portions of the Software.
+--  This program is free software: you can redistribute it and/or modify
+--  it under the terms of the GNU General Public License as published by
+--  the Free Software Foundation, either version 3 of the License, or
+--  (at your option) any later version.
 --
+--  You should have received a copy of the GNU General Public License
+--  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 --
--- THE SOFTWARE IS PROVIDED "AS IS",WITHOUT WARRANTY OF ANY KIND,EXPRESS OR 
--- IMPLIED,INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
--- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL 
--- THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,DAMAGES OR OTHER 
--- LIABILITY,WHETHER IN AN ACTION OF CONTRACT,TORT OR OTHERWISE,ARISING FROM,
--- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS 
--- IN THE SOFTWARE.
+--  THERE IS NO WARRANTY FOR THE PROGRAM, TO THE EXTENT PERMITTED BY
+--  APPLICABLE LAW. EXCEPT WHEN OTHERWISE STATED IN WRITING THE COPYRIGHT 
+--  HOLDERS AND/OR OTHER PARTIES PROVIDE THE PROGRAM "AS IS" WITHOUT WARRANTY 
+--  OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, 
+--  THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR 
+--  PURPOSE.  THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE OF THE PROGRAM 
+--  IS WITH YOU.  SHOULD THE PROGRAM PROVE DEFECTIVE, YOU ASSUME THE COST OF 
+--  ALL NECESSARY SERVICING, REPAIR OR CORRECTION. 
 --
 -------------------------------------------------------------------------------
 -------------------------------------------------------------------------------
@@ -56,7 +56,7 @@ entity fp23_cmult is
     generic (
         XSERIES : string:="7SERIES" --! Xilinx series
     );
-    port(
+    port (
         DA      : in  fp23_complex; --! Data A (input)
         DB      : in  fp23_complex; --! Data B (input)  
         ENA     : in  STD_LOGIC;    --! Input data enable
@@ -64,8 +64,8 @@ entity fp23_cmult is
         DC      : out fp23_complex; --! Data C (output) 
         VAL     : out STD_LOGIC;    --! Output data valid
 
-        RESET   : in  STD_LOGIC; --! Reset            
-        CLK     : in  STD_LOGIC --! Clock            
+        RESET   : in  STD_LOGIC;    --! Reset
+        CLK     : in  STD_LOGIC     --! Clock
     );  
 end fp23_cmult;
 
@@ -84,9 +84,9 @@ constant CM_SCALE   : std_logic_vector(5 downto 0):="011111";
 
 begin
    
----------------- FlOAT MULTIPLY A*B ----------------        
+---------------- FlOAT MULTIPLY A*B ----------------
 ARExBRE : entity work.fp23_mult
-    generic map( 
+    generic map ( 
         XSERIES => XSERIES,
         EXP_DIF => CM_SCALE
     )
@@ -101,7 +101,7 @@ ARExBRE : entity work.fp23_mult
     );  
     
 AIMxBIM : entity work.fp23_mult
-    generic map( 
+    generic map ( 
         XSERIES => XSERIES,
         EXP_DIF => CM_SCALE
     )
@@ -117,7 +117,7 @@ AIMxBIM : entity work.fp23_mult
     
     
 ARExBIM : entity work.fp23_mult
-    generic map( 
+    generic map ( 
         XSERIES => XSERIES,
         EXP_DIF => CM_SCALE
     )
@@ -132,7 +132,7 @@ ARExBIM : entity work.fp23_mult
     );      
     
 AIMxBRE : entity work.fp23_mult
-    generic map( 
+    generic map ( 
         XSERIES => XSERIES,
         EXP_DIF => CM_SCALE
     )
@@ -148,7 +148,7 @@ AIMxBRE : entity work.fp23_mult
 
 ---------------- FlOAT ADD/SUB +/- ---------------- 
 AB_ADD : entity work.fp23_addsub
-    generic map( 
+    generic map ( 
         XSERIES => XSERIES 
     )   
     port map (
@@ -163,7 +163,7 @@ AB_ADD : entity work.fp23_addsub
     );
     
 AB_SUB : entity work.fp23_addsub
-    generic map( 
+    generic map ( 
         XSERIES => XSERIES 
     )   
     port map (
