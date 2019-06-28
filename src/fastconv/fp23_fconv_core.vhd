@@ -10,11 +10,12 @@
 --
 -- Description : 
 --
---      Base core for fast convolution, NFFT - parameter (number of FFT stages)
---      Include: FFT, IFFT, Complex mult, Input and Output buffers.
---      Number of filter taps: N = Nfft/2.
+-- Base core for fast convolution, NFFT - parameter (number of FFT stages)
+-- Include: FFT, IFFT, Complex mult, Input and Output buffers.
+-- Number of filter taps: N = Nfft/2.
 --
---      use Matlab function: y = fir1(x, N) and add N/2 zeros for Support Func.
+-- Note: use Matlab function: y = fir1(x, N) and add N/2 zeros for Support Func.
+--
 --
 -- Input data - two complex (Re, Im) words per one clock (interleave-2 mode),
 -- Output data - two complex (Re, Im) words per one clock.
@@ -127,21 +128,21 @@ use work.fp_m1_pkg.int16_complex;
 use ieee.std_logic_textio.all;
 use std.textio.all;
 
-entity fp23fftk_fc_core is    
+entity fp23_fconv_core is    
     generic (
         DATA                : integer := 64;        --! Data width: double of [I/Q]
         NFFT                : integer := 13;        --! Number of FFT stages
-        XSERIES             : string:="ULTRA";      --! FPGA family: for 6/7 series: "7SERIES"; for ULTRASCALE: "ULTRA";
-        USE_SCALE           : boolean:=FALSE;       --! Use full scale rambs for twiddle factor
-        USE_MLT_FOR_ADDSUB  : boolean:=FALSE;       --! Use DSP48E1/2 blocks or not for Add/Sub
-        USE_MLT_FOR_CMULT   : boolean:=FALSE;       --! Use DSP48E1/2 blocks or not for Complex Mult
-        USE_MLT_FOR_TWDLS   : boolean:=FALSE        --! Use DSP48E1/2 blocks or not for Twiddles
-    );  
+        XSERIES             : string  :="ULTRA";    --! FPGA family: for 6/7 series: "7SERIES"; for ULTRASCALE: "ULTRA";
+        USE_SCALE           : boolean :=FALSE;      --! Use full scale rambs for twiddle factor
+        USE_MLT_FOR_ADDSUB  : boolean :=FALSE;      --! Use DSP for Add/Sub
+        USE_MLT_FOR_CMULT   : boolean :=FALSE;      --! Use DSP for Complex Mult
+        USE_MLT_FOR_TWDLS   : boolean :=FALSE       --! Use DSP for Twiddles
+    );
     port (
         ---- Clocks ----
         clk_trd             : in std_logic; --! System clock   
         clk_dsp             : in std_logic; --! DSP core clock 
-        
+
         ---- Resets ----
         reset               : in std_logic; --! Global reset 
         start               : in std_logic; --! Start DSP core
@@ -165,7 +166,7 @@ entity fp23fftk_fc_core is
     );
 end entity;
 
-architecture fp23fftk_fc_core of fp23fftk_fc_core is
+architecture fp23_fconv_core of fp23_fconv_core is
 
 signal rst_clk_dsp          : std_logic;
 
@@ -181,9 +182,9 @@ signal fix2_di              : int16_complex;
 signal fix_ena              : std_logic;
 
 signal flt0_do              : int16_complex;
-signal flt1_do              : int16_complex;
+--signal flt1_do              : int16_complex;
 signal flt2_do              : int16_complex;
-signal flt3_do              : int16_complex;
+--signal flt3_do              : int16_complex;
 signal fltn_vl              : std_logic;
 
 signal sf0_dat              : fp23_complex;
@@ -231,7 +232,7 @@ fix2_di <= (buf_dat2(15 downto 00), buf_dat2(31 downto 16));
 fix_ena <= buf_ena;
 
 ------------------ Fast Convolution: Double lin conv. --------------------
-xFC01: entity work.fp23_fftNk2_core
+xFC01: entity work.fp23_linconv_dbl
     generic map (
         DATA                => DATA,
         NFFT                => NFFT,
@@ -253,9 +254,9 @@ xFC01: entity work.fp23_fftNk2_core
 
         ---- Output data: Two linear conv. ----
         flt0_do             => flt0_do,
-        flt1_do             => flt1_do,
+        --flt1_do             => flt1_do,
         flt2_do             => flt2_do,
-        flt3_do             => flt3_do,
+        --flt3_do             => flt3_do,
         fltn_vl             => fltn_vl,
 
         ---- Output data: Two linear conv. ----
@@ -270,30 +271,6 @@ xFC01: entity work.fp23_fftNk2_core
 shf0_di <= flt0_do.im & flt0_do.re;
 shf1_di <= flt2_do.im & flt2_do.re;
 sh01_en <= fltn_vl;
-
-
-write_out: process(clk_dsp) is
-    constant file_name          : string:="../../../../../math/test.dat";
-    file log                    : TEXT open WRITE_MODE is file_name;
-    variable str                : LINE;
-    variable spc                : string(1 to 4) := (others => ' ');
-begin
-    if rising_edge(clk_dsp) then    
-        if (fltn_vl = '1') then
-            --------------------------------
-            write(str, CONV_INTEGER(SIGNED(flt0_do.re)), LEFT);
-            write(str, spc);
-            write(str, CONV_INTEGER(SIGNED(flt0_do.im)), LEFT);
-            write(str, spc);
-            write(str, CONV_INTEGER(SIGNED(flt1_do.re)), LEFT);
-            write(str, spc);
-            write(str, CONV_INTEGER(SIGNED(flt1_do.im)), LEFT);
-            writeline(log, str);
-        end if;
-    end if;
-end process; 
-
--- TODO: CHECK OUTBUFFER !!
 
 ------------------ Reverse (Flow-0/1) Output Buffer --------------------
 xOUTBUF: entity work.iobuf_fft_int2
@@ -320,9 +297,9 @@ do_dt <= dt1_out & dt0_out;
 do_en <= d01_val;
 
 ------------------ Support function --------------------
-xSF: entity work.ctrl_sfram_x64
+xSF: entity work.fp23_sfunc_dbl
         generic map (
-            SFMODE      => "FWD", -- "FWD" / "INV"   
+            SFMODE      => "INV", -- "FWD" / "INV"   
             NFFT        => NFFT
         )
         port map (
@@ -347,4 +324,4 @@ xSF: entity work.ctrl_sfram_x64
             fp_sf_en    => s01_ena
         );  
 
-end fp23fftk_fc_core;
+end fp23_fconv_core;
