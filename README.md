@@ -91,6 +91,3 @@ Floating point 23-bit vector (optimized for FPGAs):
   
 ### First Release:
   * 2015/02/02
-
-### License:
-  * MIT
