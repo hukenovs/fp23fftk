@@ -162,8 +162,8 @@ begin
             read( l, lt3 ); read( l, lt4 );
 
             di_dt(15+16*3 downto 00+16*3) <= conv_std_logic_vector( lt4, 16 );
-            di_dt(15+16*2 downto 00+16*2) <= conv_std_logic_vector( lt3, 16 );
-            di_dt(15+16*1 downto 00+16*1) <= conv_std_logic_vector( lt2, 16 );
+            di_dt(15+16*2 downto 00+16*2) <= conv_std_logic_vector( lt2, 16 );
+            di_dt(15+16*1 downto 00+16*1) <= conv_std_logic_vector( lt3, 16 );
             di_dt(15+16*0 downto 00+16*0) <= conv_std_logic_vector( lt1, 16 );
             di_en <= '1';
         end loop;
