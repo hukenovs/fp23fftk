@@ -12,7 +12,7 @@ License: GNU GPL 3.0.
 | **Title**         | Universal floating point FFT cores (Xilinx FPGAs) |
 | -- | -- |
 | **Author**        | Alexander Kapitanov                        |
-| **Contact**       | sallador@bk.ru                             |
+| **Contact**       | <hidden>                                   |
 | **Project lang**  | VHDL, Verilog                              |
 | **Vendor**        | Xilinx: 6/7-series, Ultrascale, US+        |
 | **Release Date**  | 02 Feb 2015                                |
