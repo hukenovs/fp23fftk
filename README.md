@@ -11,8 +11,7 @@ License: GNU GPL 3.0.
 
 | **Title**         | Universal floating point FFT cores (Xilinx FPGAs) |
 | -- | -- |
-| **Author**        | Alexander Kapitanov                        |
-| **Contact**       | <hidden>                                   |
+| **Author**        | [Alexander Kapitanov](https://habr.com/ru/users/hukenovs/) |
 | **Project lang**  | VHDL, Verilog                              |
 | **Vendor**        | Xilinx: 6/7-series, Ultrascale, US+        |
 | **Release Date**  | 02 Feb 2015                                |
@@ -84,7 +83,7 @@ Floating point 23-bit vector (optimized for FPGAs):
 
 
 ### Link (Russian collaborative IT blog)
-  * https://habr.com/users/capitanov/
+  * https://habr.com/ru/post/322728/
   
 ### Authors:
   * Kapitanov Alexander  
